@@ -4,6 +4,10 @@
 
 - The package names its repository, its home page and its issue tracker, so the
   npm page links to the source.
+- The readme is written for the reader who wants to use the plugin. The check
+  suite and the development notes moved to CONTRIBUTING.md. The repository
+  gained a banner, a panel illustration, an architecture diagram and a social
+  preview.
 
 ## 0.2.0
 
