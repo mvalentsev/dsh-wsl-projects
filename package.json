@@ -31,6 +31,7 @@
     "check:client": "node scripts/check-client.mjs",
     "check:theme": "node scripts/check-theme-tokens.mjs",
     "check:bash": "node scripts/check-bash.mjs",
+    "check:pack": "node scripts/check-pack.mjs",
     "check:projects": "node scripts/check-projects.mjs",
     "check:urls": "node scripts/check-urls.mjs",
     "check:ui": "node scripts/check-ui.mjs",

@@ -127,14 +127,21 @@ another.
 
 ## Tests
 
-Four checks need only Node:
+Five checks need only Node:
 
 ```sh
 node scripts/check-manifest.mjs      # manifest, exports, package contents
 node scripts/check-client.mjs        # the client half
 node scripts/check-theme-tokens.mjs  # the theme tokens
 node scripts/check-bash.mjs          # the generated shell scripts
+node scripts/check-pack.mjs          # the tarball installs and starts
 ```
+
+`check-pack.mjs` packs the plugin, installs that tarball into a profile it makes
+from a copy of yours, starts a server on it, and asks that server for the
+plugin's route. A file left out of `files`, an export that does not resolve, or a
+manifest that installs but does not load are all invisible from the checkout and
+visible here. Without a profile it checks the tarball contents and says so.
 
 The other checks need WSL or Linux:
 
