@@ -37,6 +37,14 @@ jobs:
       - name: Every check that can run here
         run: node scripts/check-all.mjs
 
+      - name: Keep the report, whatever happened
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-report-node-${{ matrix.node }}
+          path: check-report.md
+          if-no-files-found: ignore
+
       - name: Packaged plugin installs and starts
         run: node scripts/check-pack.mjs
 

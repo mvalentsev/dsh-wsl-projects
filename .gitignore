@@ -17,3 +17,6 @@ desktop.ini
 
 # Local scratch — the smoke harness prints machine-specific paths
 scripts/local/
+
+# The check runner writes this; CI keeps it as an artifact
+check-report.md
