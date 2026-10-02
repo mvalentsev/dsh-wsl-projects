@@ -158,6 +158,7 @@ async function drivePanel(fetchImpl, pageOrigin = 'dsh-app://app', surface = nul
     removeEventListener: () => {},
   }
   if (surface) globalThis.window.__DSH_WSL_PROJECTS_SURFACE__ = surface
+  if (process.env.DSH_WSL_DEBUG) globalThis.window.__DSH_WSL_DEBUG__ = true
   globalThis.localStorage = {
     getItem: (key) => (storage.has(key) ? storage.get(key) : null),
     setItem: (key, value) => storage.set(key, String(value)),
@@ -445,6 +446,22 @@ const hostSource = await readFile(join(root, 'lib', 'index.js'), 'utf8')
 check('host refuses a foreign Origin', hostSource.includes('origin not allowed'))
 check('host accepts the Desktop shell origin', hostSource.includes("'dsh-app://app'"))
 check('host echoes the allowed origin', hostSource.includes('access-control-allow-origin'))
+
+// --- a host half from the previous generation -------------------------------
+// A stale host answers with its own routes, so an action would either 404 or
+// fall through to a route that means something else now — which is exactly how
+// a Remove button once stopped a service instead. The guard is asserted on the
+// source, because a hand-rolled renderer cannot be trusted to replay the state
+// update that carries the message to the screen.
+
+const panelSource = await readFile(bundlePath, 'utf8')
+check('a stale host withholds every action', panelSource.includes('const blocked = busy || staleHost'))
+check('every action button is gated on it', !/disabled: busy\b/.test(panelSource))
+check('a stale host is named to the user', panelSource.includes('older than this panel'))
+check('a stale host asks for a full restart', panelSource.includes('quit it completely'))
+check('the panel tells the host which contract it speaks',
+  panelSource.includes("'/state?contract=' + CLIENT_CONTRACT"))
+check('the host answers with its contract', (await readFile(join(root, 'lib', 'index.js'), 'utf8')).includes('contract: HOST_CONTRACT'))
 
 // --- report -----------------------------------------------------------------
 
