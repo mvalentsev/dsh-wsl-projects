@@ -1,0 +1,7 @@
+# Bundle patch layer for dsh-wsl-projects.
+# Every entry here is mounted on top of the profile's own bundles. The plugin
+# takes the web server through ctx.inject() inside apply() rather than a row
+# level `inject:` list, which the patch schema does not carry.
+- insert:
+    - id: wsl-projects
+      name: dsh-wsl-projects

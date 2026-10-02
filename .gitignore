@@ -1,0 +1,19 @@
+# Node
+node_modules/
+
+# Package manager artefacts (the plugin ships prebuilt, so nothing is generated)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+npm-debug.log*
+*.tgz
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local scratch — the smoke harness prints machine-specific paths
+scripts/local/

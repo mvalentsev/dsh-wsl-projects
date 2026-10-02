@@ -1,0 +1,49 @@
+{
+  "name": "dsh-wsl-projects",
+  "version": "0.1.0",
+  "description": "Manage DeepSeek Harness instances running inside WSL from the Windows DSH app: pick a project, start/stop/restart the WSL dsh web server, choose the port, and edit its configs.",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.0-rc.2 <0.2.1-0"
+  },
+  "scripts": {
+    "check:client": "node scripts/check-client.mjs",
+    "check:host": "node scripts/smoke.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "wsl",
+    "wsl2",
+    "windows"
+  ],
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
+    }
+  }
+}
