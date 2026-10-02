@@ -40,10 +40,14 @@ function availability(needs) {
   if (needs === 'distro') {
     const probe = spawnSync('wsl.exe', ['-d', process.env.SMOKE_DISTRO || 'Ubuntu', '--', 'bash', '-lc', 'echo ok'], { encoding: 'utf8' })
     if (probe.status === 0) return { ok: true }
-    const native = spawnSync('bash', ['-lc', 'command -v systemctl >/dev/null && echo ok'], { encoding: 'utf8' })
-    return native.stdout.includes('ok')
-      ? { ok: true }
-      : { ok: false, why: 'no WSL distribution and no local systemd' }
+    // A local systemd, and a live user bus with it. Asking whether the
+    // `systemctl` binary exists is not enough: a CI runner has the binary and no
+    // user session, so the checks would start and then fail on their first real
+    // call — which is exactly what happened the first time CI ran.
+    const native = spawnSync('systemctl', ['--user', 'is-system-running'], { encoding: 'utf8' })
+    const state = String(native.stdout || '').trim()
+    if (native.status === 0 || state === 'degraded') return { ok: true }
+    return { ok: false, why: 'no WSL distribution, and no systemd user session here' }
   }
   if (needs === 'browser') {
     const candidates = [
@@ -92,6 +96,14 @@ const skipped = results.filter((r) => r.state === 'skipped')
 console.log('')
 console.log(`checks run: ${results.length - skipped.length}, skipped: ${skipped.length}, failed: ${failed.length}`)
 for (const skip of skipped) console.log(`  skipped ${skip.file}: ${skip.note}`)
+// Skipping is honest, but it must not become a way to pass with nothing checked.
+// `CHECK_REQUIRE_ALL=1` turns a skip into a failure, for a job that is expected
+// to have everything.
+const strict = process.env.CHECK_REQUIRE_ALL === '1'
+if (strict && skipped.length) {
+  console.log(`RESULT: ${skipped.length} check(s) could not run, and CHECK_REQUIRE_ALL is set`)
+  process.exit(1)
+}
 console.log(failed.length
   ? `RESULT: ${failed.length} check(s) failed: ${failed.map((f) => f.file).join(', ')}`
   : 'RESULT: every check that could run here passed')

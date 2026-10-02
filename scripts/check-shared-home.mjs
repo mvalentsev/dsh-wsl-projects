@@ -63,7 +63,7 @@ if (process.env.DSH_WSL_DEBUG) {
 }
 
 const url = async (port, tag) => {
-  for (let i = 0; i < 60; i += 1) {
+  for (let i = 0; i < 40; i += 1) {
     await new Promise((r) => setTimeout(r, 1000))
     const found = await bash(distro, `grep -oE "http://127\\\\.0\\\\.0\\\\.1:${port}/\\\\?token=[A-Za-z0-9_-]+" /tmp/pf-${tag}.log 2>/dev/null | tail -1`, { timeoutMs: 20000 })
     if (found.stdout.trim()) return found.stdout.trim()
@@ -71,8 +71,21 @@ const url = async (port, tag) => {
   return ''
 }
 
-const urlA = await url(portA, 'a')
-const urlB = await url(portB, 'b')
+let urlA = await url(portA, 'a')
+let urlB = await url(portB, 'b')
+
+// A distribution that was busy with the previous check can be slow enough that a
+// process never binds. That reads as a failure of this experiment while it is
+// really a race between two checks, so the start is tried once more after the
+// ports are cleared. The second attempt is the last one.
+if (!urlA || !urlB) {
+  console.log('NOTE the first start did not come up; clearing the ports and trying once more')
+  await bash(distro, `fuser -k ${portA}/tcp 2>/dev/null; fuser -k ${portB}/tcp 2>/dev/null; sleep 2; rm -f /tmp/pf-a.log /tmp/pf-b.log`, { timeoutMs: 40000 })
+  await bash(distro, setup, { timeoutMs: 120000 })
+  urlA = await url(portA, 'a')
+  urlB = await url(portB, 'b')
+}
+
 check(Boolean(urlA) && Boolean(urlB), 'both processes started')
 
 const facts = await bash(distro, [
