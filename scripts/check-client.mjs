@@ -83,14 +83,16 @@ const payload = JSON.stringify({
 /**
  * Loads the bundle with fresh globals and returns what the panel produced.
  * `fetchImpl` receives the URL and must resolve like fetch; `pageOrigin` is the
- * document origin the shell would provide.
+ * document origin the shell would provide; `surface` picks which host slot the
+ * plugin registers into.
  */
-async function drivePanel(fetchImpl, pageOrigin = 'dsh-app://app') {
+async function drivePanel(fetchImpl, pageOrigin = 'dsh-app://app', surface = null) {
   const loaded = []
   const fetchCalls = []
   const storage = new Map()
 
   globalThis.window = { __ModuleLoader__: { load: (spec) => loaded.push(spec) }, innerWidth: 1920, innerHeight: 1080 }
+  if (surface) globalThis.window.__DSH_WSL_PROJECTS_SURFACE__ = surface
   globalThis.localStorage = {
     getItem: (key) => (storage.has(key) ? storage.get(key) : null),
     setItem: (key, value) => storage.set(key, String(value)),
@@ -133,7 +135,7 @@ async function drivePanel(fetchImpl, pageOrigin = 'dsh-app://app') {
   // --- render twice: empty, then with whatever the host answered
   const render = () => {
     React.__reset()
-    return registration ? registration[2]() : null
+    return registration ? registration[2]({}) : null
   }
   let renderError = null
   let tree = null
@@ -178,17 +180,20 @@ check('plugin exports apply()', typeof healthy.plugin?.apply === 'function')
 check("plugin injects the slots service", Array.isArray(healthy.plugin?.inject) && healthy.plugin.inject.includes('slots'),
   JSON.stringify(healthy.plugin?.inject))
 check('apply() runs without throwing', !healthy.applyError, healthy.applyError ? String(healthy.applyError.message) : '')
-check("apply() injects into 'shell.overlay'", healthy.registrations.some((r) => r[0] === 'inject' && r[1] === 'shell.overlay'))
+check("apply() injects into the settings page", healthy.registrations.some((r) => r[0] === 'inject' && r[1] === 'settings.section'))
 check('apply() registers a component', Boolean(healthy.registration))
-check('registration targets shell.overlay', healthy.registration?.[1]?.name === 'shell.overlay', JSON.stringify(healthy.registration?.[1]))
+check('registration targets settings.section', healthy.registration?.[1]?.name === 'settings.section', JSON.stringify(healthy.registration?.[1]))
 check('registration carries an order', typeof healthy.registration?.[1]?.order === 'number')
+check('registration labels the section', typeof healthy.registration?.[1]?.label === 'function' && healthy.registration[1].label() === 'WSL projects',
+  JSON.stringify(healthy.registration?.[1]?.label?.()))
 check('registration exposes a component function', typeof healthy.registration?.[2] === 'function')
 check('panel renders without throwing', !healthy.renderError && !healthy.secondError,
   String(healthy.renderError?.message || healthy.secondError?.message || ''))
 check('relative route is tried first', healthy.fetchCalls[0] === '/wsl-projects/api/state', JSON.stringify(healthy.fetchCalls.slice(0, 3)))
 
 const text = healthy.text
-check('panel shows its title', text.includes('WSL · dsh projects'), text.slice(0, 200))
+check('docked panel renders its controls', text.includes('Distro') && text.includes('Project') && text.includes('Port'),
+  text.slice(0, 220))
 check('panel lists the reported project', text.includes('Radio Station'), text.slice(0, 260))
 check('panel offers Start', text.includes('Start'))
 check('panel offers Stop', text.includes('Stop'))
@@ -200,6 +205,19 @@ check('panel shows the host dsh version', text.includes('0.2.0-rc.2'), text.slic
 check('panel links the token URL', text.includes('Open the WSL dsh UI'), text.slice(0, 260))
 check('managed unit hides the create button', !text.includes('Create service'), text.slice(0, 260))
 check('panel offers renaming a project', text.includes('Save name'), text.slice(0, 300))
+check('docked panel has no overlay chrome', !text.includes('Collapse'), text.slice(0, 200))
+
+// --- the floating variant is still available on request ---------------------
+
+const floating = await drivePanel(async () => okResponse(), 'dsh-app://app', 'floating')
+check('floating surface injects into shell.overlay',
+  floating.registrations.some((r) => r[0] === 'inject' && r[1] === 'shell.overlay'))
+check('floating surface targets shell.overlay', floating.registration?.[1]?.name === 'shell.overlay',
+  JSON.stringify(floating.registration?.[1]))
+check('floating surface keeps its window chrome', floating.text.includes('Collapse'), floating.text.slice(0, 200))
+check('floating surface keeps its title bar', floating.text.includes('WSL · dsh projects'), floating.text.slice(0, 200))
+check('floating surface shows the same data', floating.text.includes('dsh-web.service') && floating.text.includes('Radio Station'),
+  floating.text.slice(0, 220))
 
 // --- degraded host: the relative route fails, an absolute one answers -------
 

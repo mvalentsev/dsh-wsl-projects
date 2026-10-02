@@ -4,8 +4,9 @@ Run DeepSeek Harness (dsh) inside WSL2 and drive it from the Windows dsh app:
 pick the project folder, start, stop and restart the WSL instance, choose its
 port, and edit its config files — without opening a WSL terminal.
 
-A floating panel appears in the dsh web UI. It talks to a host half that runs
-inside the Windows dsh process and reaches WSL through `wsl.exe`.
+The panel is a **page in Settings → WSL projects**, next to the host's own
+sections. A draggable overlay is still available if you would rather keep it in
+view; see [Where the panel lives](#where-the-panel-lives).
 
 > Verified against dsh `0.2.0-rc.2` (engine line `0.2.0`). Not affiliated with
 > DeepSeek.
@@ -19,6 +20,25 @@ browser. Day-to-day that means remembering `systemctl --user restart`, editing
 a different OS than the one you are looking at.
 
 This plugin removes that hop. It is a control panel for exactly that instance.
+
+## Where the panel lives
+
+By default the panel registers into the host's **`settings.section`** slot, so
+it reads as an ordinary settings page: its own entry in the settings navigation,
+normal document flow, themed by the host, no window chrome. That is the right
+home for a control surface — it has room, it does not cover the conversation,
+and it matches how the host's own management pages look.
+
+If you would rather have it always in view, the plugin can register the
+draggable overlay instead. There is no configuration key for this yet; the
+switch is a global the shell can set before the bundle materialises:
+
+```js
+window.__DSH_WSL_PROJECTS_SURFACE__ = 'floating'
+```
+
+Both surfaces render the same component and call the same routes; only the slot
+and the chrome differ.
 
 ## Features
 
