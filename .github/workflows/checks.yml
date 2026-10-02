@@ -26,5 +26,8 @@ jobs:
       - name: Client half harness
         run: node scripts/check-client.mjs
 
+      - name: Theme token consistency
+        run: node scripts/check-theme-tokens.mjs
+
       - name: Package contents
         run: npm pack --dry-run
