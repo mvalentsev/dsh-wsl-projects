@@ -312,13 +312,23 @@ check('the alias keeps the folder name visible', views[0]?.name === 'radio')
 check('a project carries its kind and git flag', views[0]?.meta.includes('node') && views[0].meta.includes('git'),
   JSON.stringify(views[0]?.meta))
 
-check('the running project wins over the selection',
-  T.resolveActiveProject({ project: '/a' }, [{ path: '/b' }], '/c') === '/a')
-check('the selection is used when nothing runs',
-  T.resolveActiveProject({ project: null }, [{ path: '/b' }], '/c') === '/c')
+// The regression that prompted this: a running service always reports a
+// project, and that report used to outrank the list, so picking a project did
+// nothing at all.
+check('picking a project beats what the service reports',
+  T.resolveActiveProject({ selected: '/picked', reportedProject: '/running', lastReported: '/running', projects: [{ path: '/first' }] }) === '/picked')
+check('the service project is used when nothing is picked',
+  T.resolveActiveProject({ selected: '', reportedProject: '/running', lastReported: '/running', projects: [] }) === '/running')
+check('a project moved outside the panel is followed',
+  T.resolveActiveProject({ selected: '/picked', reportedProject: '/moved', lastReported: '/running', projects: [] }) === '/moved')
 check('the newest project is the fallback',
-  T.resolveActiveProject({}, [{ path: '/b' }], '') === '/b')
-check('no projects resolves to an empty choice', T.resolveActiveProject({}, [], '') === '')
+  T.resolveActiveProject({ selected: '', reportedProject: null, lastReported: null, projects: [{ path: '/first' }] }) === '/first')
+check('no projects resolves to an empty choice',
+  T.resolveActiveProject({ selected: '', reportedProject: null, lastReported: null, projects: [] }) === '')
+check('a picked project is what Start aims at',
+  T.resolveLaunchTarget({ selected: '/picked', reportedProject: '/running' }) === '/picked')
+check('with no pick, Start aims at what runs',
+  T.resolveLaunchTarget({ selected: '', reportedProject: '/running' }) === '/running')
 
 check('the panel falls back through candidate addresses', T.apiBases().length >= 2, JSON.stringify(T.apiBases()))
 check('our own answers are recognised', T.looksLikeOurAnswer({ ok: true }) && !T.looksLikeOurAnswer({ hello: 'world' }))
