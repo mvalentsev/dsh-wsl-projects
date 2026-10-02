@@ -24,6 +24,8 @@ const read = (file) => readFile(join(root, file), 'utf8')
 const results = []
 const pass = (claim, evidence) => results.push({ claim, ok: true, evidence })
 const fail = (claim, evidence) => results.push({ claim, ok: false, evidence })
+/** A claim this machine cannot test. Not a pass, and not a fault. */
+const untested = (claim, why) => results.push({ claim, ok: true, skipped: true, evidence: why })
 
 /** The claim is present in a file, quoted with the line it came from. */
 async function code(claim, file, needle) {
@@ -189,6 +191,12 @@ for (const verb of ['state', 'units', 'projects', 'distros', 'start', 'stop', 'r
 }
 
 // ------------------------------------------------------------------ the live
+//
+// Part of the readme describes behaviour, and behaviour can only be shown on a
+// machine that has a distribution and projects. Where that is missing, those
+// claims are reported as unproven rather than failed: a claim that could not be
+// tested is not a claim that is false, and a check that fails for want of a
+// distribution teaches a reader to ignore it.
 
 const ctl = new WslProjects({ distro: process.env.SMOKE_DISTRO || 'Ubuntu' })
 const projects = (await ctl.projects()).projects
@@ -254,18 +262,29 @@ if (projects.length >= 2) {
   for (const unit of (await ctl.units()).units || []) await ctl.removeUnit(unit.unit)
   await bash(ctl.distro(), 'for p in $(ss -ltn 2>/dev/null | grep -oE "127\\\\.0\\\\.0\\\\.1:198[0-9][0-9]" | cut -d: -f2 | sort -u); do fuser -k "$p/tcp" 2>/dev/null; done; sleep 1', { timeoutMs: 60000 })
 } else {
-  fail('Two projects run at the same time', 'fewer than two projects found')
+  untested('Two projects run at the same time', `only ${projects.length} project(s) found here`)
 }
 
 // ------------------------------------------------------------------- report
 
 const bad = results.filter((r) => !r.ok)
+const notRun = results.filter((r) => r.skipped)
 console.log('')
 console.log('claims checked: ' + results.length)
 for (const r of results) {
-  console.log((r.ok ? 'ok   ' : 'FAIL ') + r.claim)
+  const mark = r.skipped ? 'n/a  ' : (r.ok ? 'ok   ' : 'FAIL ')
+  console.log(mark + r.claim)
   console.log('       ' + r.evidence)
 }
 console.log('')
-console.log(bad.length ? `RESULT: ${bad.length} claim(s) not proven` : 'RESULT: every claim in the readme is proven')
+if (notRun.length) {
+  console.log(`UNTESTED here: ${notRun.length} claim(s) need a distribution with projects`)
+  for (const r of notRun) console.log('  ' + r.claim)
+  console.log('')
+}
+console.log(bad.length
+  ? `RESULT: ${bad.length} claim(s) not proven`
+  : notRun.length
+    ? `RESULT: every claim testable here is proven, ${notRun.length} could not be tested`
+    : 'RESULT: every claim in the readme is proven')
 process.exit(bad.length ? 1 : 0)

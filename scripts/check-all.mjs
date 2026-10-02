@@ -20,18 +20,22 @@ const offlineOnly = process.argv.includes('--offline')
 
 /** Each check, what it is for, and what it needs. */
 const CHECKS = [
-  { file: 'check-manifest.mjs', needs: 'node', says: 'manifest, exports and package contents' },
-  { file: 'check-client.mjs', needs: 'node', says: 'the client half: factory, slots, decisions' },
-  { file: 'check-theme-tokens.mjs', needs: 'node', says: 'theme tokens exist and no colour literal' },
-  { file: 'check-bash.mjs', needs: 'node', says: 'every generated shell script parses (bash when reachable)' },
-  { file: 'check-pack.mjs', needs: 'node', says: 'the packed tarball installs and starts' },
-  { file: 'check-projects.mjs', needs: 'distro', says: 'the project model, two projects at once' },
-  { file: 'check-urls.mjs', needs: 'distro', says: 'every link the panel offers answers' },
-  { file: 'check-legacy.mjs', needs: 'distro', says: 'a unit from an older version is repaired' },
-  { file: 'check-shared-home.mjs', needs: 'distro', says: 'the home decides the project, proven' },
-  { file: 'check-alias.mjs', needs: 'distro', says: 'the name store round-trips' },
-  { file: 'check-ui.mjs', needs: 'browser', says: 'a browser shows the correct project' },
-  { file: 'check-readme.mjs', needs: 'distro', says: 'every claim in the readme, with evidence' },
+  { file: 'check-manifest.mjs', needs: ['node'], says: 'manifest, exports and package contents' },
+  { file: 'check-client.mjs', needs: ['node'], says: 'the client half: factory, slots, decisions' },
+  { file: 'check-theme-tokens.mjs', needs: ['node'], says: 'theme tokens exist and no colour literal' },
+  { file: 'check-bash.mjs', needs: ['node'], says: 'every generated shell script parses (bash when reachable)' },
+  { file: 'check-pack.mjs', needs: ['node'], says: 'the packed tarball installs and starts' },
+  { file: 'check-projects.mjs', needs: ['distro'], says: 'the project model, two projects at once' },
+  { file: 'check-urls.mjs', needs: ['distro'], says: 'every link the panel offers answers' },
+  { file: 'check-legacy.mjs', needs: ['distro'], says: 'a unit from an older version is repaired' },
+  { file: 'check-shared-home.mjs', needs: ['distro'], says: 'the home decides the project, proven' },
+  { file: 'check-alias.mjs', needs: ['distro'], says: 'the name store round-trips' },
+  // A browser alone is not enough: this check starts services and reads the pages
+  // they serve, so it needs a distribution as well. Marking it as needing only a
+  // browser ran it on a CI runner, where it failed for want of a distribution —
+  // the failure that broke the first two CI runs.
+  { file: 'check-ui.mjs', needs: ['browser', 'distro'], says: 'a browser shows the correct project' },
+  { file: 'check-readme.mjs', needs: ['distro'], says: 'every claim in the readme, with evidence' },
 ]
 
 /** Whether a check can run here at all, and why not when it cannot. */
@@ -69,15 +73,16 @@ function availability(needs) {
 const results = []
 for (const [index, check] of CHECKS.entries()) {
   const label = `${index + 1}/${CHECKS.length} ${check.file.replace('.mjs', '')}`
-  if (offlineOnly && check.needs !== 'node') {
+  const needs = Array.isArray(check.needs) ? check.needs : [check.needs]
+  if (offlineOnly && needs.some((need) => need !== 'node')) {
     results.push({ ...check, state: 'skipped', note: '--offline' })
     console.log(`${label.padEnd(28)} skipped  (--offline)`)
     continue
   }
-  const can = availability(check.needs)
-  if (!can.ok) {
-    results.push({ ...check, state: 'skipped', note: can.why })
-    console.log(`${label.padEnd(28)} skipped  (${can.why})`)
+  const missing = needs.map((need) => availability(need)).find((can) => !can.ok)
+  if (missing) {
+    results.push({ ...check, state: 'skipped', note: missing.why })
+    console.log(`${label.padEnd(28)} skipped  (${missing.why})`)
     continue
   }
   const run = spawnSync(process.execPath, [join(root, 'scripts', check.file)], { encoding: 'utf8' })
