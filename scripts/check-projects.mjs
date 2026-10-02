@@ -4,7 +4,10 @@
 //
 //   node scripts/check-projects.mjs
 //
-// It restores the first project it found, so the machine ends as it started.
+// It is self-contained: it borrows whichever project it finds, or creates the
+// pair itself when the machine has no service yet, and removes everything it
+// created. The machine ends as it started, including an existing service on the
+// port it was using.
 
 import { WslProjects } from '../lib/controller.js'
 import { bash } from '../lib/wsl.js'
@@ -33,21 +36,23 @@ async function freePortsExcept(keep) {
   return bash(ctl.distro(), script, { timeoutMs: 60000 })
 }
 
-async function cleanup(keepUnit, keepPort) {
-  for (const unit of created) {
-    await ctl.removeUnit(unit).catch(() => {})
-  }
-  await freePortsExcept([String(keepPort)])
-  if (keepUnit) await ctl.start({ project: keepUnit, port: keepPort })
-}
-
 const before = await ctl.units()
 const initial = before.units || []
-check(initial.length >= 1, `a service already exists (${initial.length})`)
-if (!initial.length) process.exit(1)
+const projects = (await ctl.projects()).projects
+check(projects.length >= 2, `two projects are available (${projects.length})`)
+if (projects.length < 2) process.exit(1)
 
-const original = initial.find((service) => service.running) || initial[0]
-const other = (await ctl.projects()).projects.find((project) => project.path !== original.project)
+// A service of our own when the machine has none, so the check never depends on
+// the caller having set one up.
+let original = initial.find((service) => service.running) || initial[0]
+if (!original) {
+  const seed = await ctl.start({ project: projects[0].path })
+  check(seed.ok === true, 'a first project starts from nothing: ' + JSON.stringify(seed.error ?? ''))
+  original = { unit: seed.unit, project: seed.project, port: seed.port, running: true }
+  created.add(seed.unit)
+}
+
+const other = projects.find((project) => project.path !== original.project)
 check(Boolean(other), 'a second project is available to start')
 
 // 1. Starting another project must leave the first one alone.
@@ -95,19 +100,27 @@ check(String(restarted.port) === String(started.port), `it kept its port (${rest
 await ctl.stopProject({ project: other.path })
 await ctl.removeUnit(started.unit)
 created.delete(started.unit)
-await freePortsExcept([String(original.port)])
 const cleaned = (await ctl.units()).units || []
 check(cleaned.some((service) => service.unit === original.unit && service.running), 'the original still runs at the end')
 check(!cleaned.some((service) => service.unit === started.unit), 'the temporary service is gone')
 
-const ports = await bash(ctl.distro(), 'ss -ltn 2>/dev/null | grep -oE "127\\\\.0\\\\.0\\\\.1:198[0-9][0-9]" | cut -d: -f2 | sort -u', { timeoutMs: 30000 })
-const listening = ports.stdout.trim().split('\n').filter(Boolean)
-check(listening.every((port) => String(port) === String(original.port)),
-  'no stray server is left listening (' + (listening.join(',') || 'none') + ')')
+// 5. Put the machine back exactly as it was found. When this run created the
+//    first service only so it had something to work with, it removes it again
+//    rather than leaving a service nobody asked for.
+if (created.has(original.unit)) {
+  await ctl.removeUnit(original.unit)
+  created.delete(original.unit)
+} else {
+  const restored = await ctl.start({ project: original.project, port: original.port })
+  check(restored.ok === true, 'the original project is restored')
+}
 
-// Restore the original to exactly what it was.
-const restored = await ctl.start({ project: original.project, port: original.port })
-check(restored.ok === true, 'the original project is restored')
+await freePortsExcept([])
+const left = await bash(ctl.distro(), 'ss -ltn 2>/dev/null | grep -oE "127\\\\.0\\\\.0\\\\.1:198[0-9][0-9]" | cut -d: -f2 | sort -u', { timeoutMs: 30000 })
+const stillListening = left.stdout.trim().split('\n').filter(Boolean)
+check(stillListening.length === 0, 'nothing is left listening (' + (stillListening.join(',') || 'none') + ')')
+const remaining = (await ctl.units()).units || []
+check(remaining.length === 0, 'no service of ours is left (' + remaining.map((u) => u.unit).join(',') + ')')
 
 console.log('')
 if (failures.length) {

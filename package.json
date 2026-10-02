@@ -30,6 +30,8 @@
     "check:manifest": "node scripts/check-manifest.mjs",
     "check:client": "node scripts/check-client.mjs",
     "check:theme": "node scripts/check-theme-tokens.mjs",
+    "check:projects": "node scripts/check-projects.mjs",
+    "check:urls": "node scripts/check-urls.mjs",
     "check:host": "node scripts/smoke.mjs"
   },
   "keywords": [
