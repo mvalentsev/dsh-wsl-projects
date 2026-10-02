@@ -32,6 +32,9 @@ projects do not touch each other. You can run two projects at the same time.
 - `~/projects` with your project folders. You can change this path. Refer to
   Configuration.
 
+The plugin has one tested platform: WSL2 with Ubuntu. Other distributions are not
+tested.
+
 ## Install
 
 1. Run this command in a terminal on Windows:
@@ -96,9 +99,11 @@ window.__DSH_WSL_PROJECTS_SURFACE__ = 'floating'  // a movable panel
 A project is the unit of control.
 
 The plugin gives each project its own dsh home at
-`~/.dsh/dsh-wsl-projects/homes/<folder>/`. The launcher makes the home at the
-first start. It copies the account from `~/.dsh` one time, so no project asks for
-a login again. It writes the project into the workspace storage of that home.
+`~/.dsh/dsh-wsl-projects/homes/<folder>-<tag>/`. The tag comes from the path, so
+two projects with the same folder name get separate homes. The launcher makes the
+home at the first start. It copies the account from `~/.dsh` one time, so no
+project asks for a login again. It writes the project into the workspace storage
+of that home.
 
 The separate homes are necessary. `dsh` opens the workspace that
 `$DSH_HOME/storages/workspace.json` names. `dsh` does not compare that workspace
@@ -162,6 +167,33 @@ the same four checks on Node 20, 22 and 24.
 
 You can set `SMOKE_DISTRO`, `SMOKE_PROJECT`, `SMOKE_PROJECT_A`,
 `SMOKE_PROJECT_B`, `DSH_ASAR` and `UI_BROWSER` for your machine.
+
+## Troubleshooting
+
+**The panel does nothing, and it says the host half is older.** The app runs the
+host half from the moment it starts. Quit the app and start it again. A page
+reload is not sufficient.
+
+**Open shows the wrong project.** Look at the address. One port serves one
+project, and each project has its own home. Start the project again, then push
+Open in its own row.
+
+**Open shows an error about authentication.** The link is old. Push Stop, then
+Start. The panel checks a link before it shows it.
+
+**A project asks for a login again.** The home of that project holds a copy of
+the account, and the copy does not follow a later change in `~/.dsh`. Remove the
+copy, then start the project:
+
+```sh
+rm ~/.dsh/dsh-wsl-projects/homes/<folder>-<tag>/.credentials.yaml
+```
+
+**A service does not start.** Look at its log:
+
+```sh
+journalctl --user -u dsh-web-<folder>-<tag>.service -n 40
+```
 
 ## Security
 

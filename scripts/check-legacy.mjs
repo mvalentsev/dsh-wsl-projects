@@ -34,8 +34,12 @@ console.log('its home: ' + slug)
 
 const stateScript = 'echo "$HOME/.dsh/dsh-wsl-projects"'
 
+// Only the port this check uses is cleared. A wider sweep would kill the
+// processes of another check running on its own ports, and the failures that
+// causes look like defects in the plugin rather than interference.
+const PORT = 19870
 for (const unit of (await ctl.units()).units || []) await ctl.removeUnit(unit.unit)
-await bash(ctl.distro(), `rm -f "$HOME/.config/systemd/user/${UNIT}"; rm -rf "$HOME/.config/systemd/user/${UNIT}.d" "$HOME/.dsh/dsh-wsl-projects/homes/${slug}"; for p in $(ss -ltn 2>/dev/null | grep -oE "127\\\\.0\\\\.0\\\\.1:198[0-9][0-9]" | cut -d: -f2 | sort -u); do fuser -k "$p/tcp" 2>/dev/null; done; sleep 2`, { timeoutMs: 60000 })
+await bash(ctl.distro(), `rm -f "$HOME/.config/systemd/user/${UNIT}"; rm -rf "$HOME/.config/systemd/user/${UNIT}.d" "$HOME/.dsh/dsh-wsl-projects/homes/${slug}"; fuser -k ${PORT}/tcp 2>/dev/null; sleep 2`, { timeoutMs: 60000 })
 
 // The launcher is current, the unit is not. The environment entry is included
 // because the old template wrote one, and it is exactly what used to win over
@@ -50,7 +54,7 @@ const oldUnit = [
   'Type=simple',
   `WorkingDirectory=${PROJECT}`,
   'Environment=DSH_HOME=%h/.dsh',
-  `ExecStart=%h/.dsh/dsh-wsl-projects/launch.sh 19800 ${UNIT}`,
+  `ExecStart=%h/.dsh/dsh-wsl-projects/launch.sh ${PORT} ${UNIT}`,
   'Restart=always',
   'RestartSec=3',
   'KillMode=mixed',
@@ -91,11 +95,13 @@ check(envCheck.stdout.includes(`home=${state}/homes/${slug}`),
 const text = await cdp(9800 + Math.floor(Math.random() * 150), url)
 const flat = (text || '').replace(/\s+/g, ' ')
 console.log('  UI: ' + flat.slice(0, 100))
-check(new RegExp('\\b' + slug + '\\b').test(flat), 'the UI shows ' + slug)
+// The panel shows the folder name of the project, not the name of its home.
+const folder = PROJECT.replace(/\/+$/, '').split('/').pop()
+check(new RegExp('\\b' + folder + '\\b').test(flat), 'the UI shows ' + folder)
 check(!/Choose a workspace/i.test(flat), 'the UI did not fall back to the workspace picker')
 
 await ctl.removeUnit(UNIT)
-await bash(ctl.distro(), 'for p in $(ss -ltn 2>/dev/null | grep -oE "127\\\\.0\\\\.0\\\\.1:198[0-9][0-9]" | cut -d: -f2 | sort -u); do fuser -k "$p/tcp" 2>/dev/null; done; sleep 1', { timeoutMs: 40000 })
+await bash(ctl.distro(), `fuser -k ${PORT}/tcp 2>/dev/null; sleep 1`, { timeoutMs: 40000 })
 
 console.log(failures === 0
   ? 'RESULT: a unit from an older version still opens its own project'

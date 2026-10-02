@@ -57,7 +57,10 @@ fuser -k ${portA}/tcp 2>/dev/null; fuser -k ${portB}/tcp 2>/dev/null
 ( cd "${projectA}" && DSH_HOME="${home}" setsid nohup node "$DSH" --profile web --no-open --port ${portA} > /tmp/pf-a.log 2>&1 & )
 ( cd "${projectB}" && DSH_HOME="${home}" setsid nohup node "$DSH" --profile web --no-open --port ${portB} > /tmp/pf-b.log 2>&1 & )
 echo started`
-await bash(distro, setup, { timeoutMs: 120000 })
+const set = await bash(distro, setup, { timeoutMs: 120000 })
+if (process.env.DSH_WSL_DEBUG) {
+  console.log('setup exit:', set.code, 'stdout:', JSON.stringify(set.stdout.slice(0, 200)), 'stderr:', JSON.stringify((set.stderr || '').slice(0, 300)))
+}
 
 const url = async (port, tag) => {
   for (let i = 0; i < 60; i += 1) {
