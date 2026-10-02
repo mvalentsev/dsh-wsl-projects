@@ -10,7 +10,7 @@
 import { WslProjects } from '../lib/controller.js'
 import { bash } from '../lib/wsl.js'
 import { writeLaunchScript } from '../lib/scripts.js'
-import { cdp } from './ui-probe.mjs'
+import { cdp, homeNameFor } from './ui-probe.mjs'
 
 const ctl = new WslProjects({ distro: process.env.SMOKE_DISTRO || 'Ubuntu' })
 let failures = 0
@@ -28,8 +28,9 @@ if (!PROJECT) {
   console.log('no project found under the configured projects root')
   process.exit(1)
 }
-const slug = PROJECT.split('/').filter(Boolean).pop()
+const slug = homeNameFor(PROJECT)
 console.log('project: ' + PROJECT)
+console.log('its home: ' + slug)
 
 const stateScript = 'echo "$HOME/.dsh/dsh-wsl-projects"'
 

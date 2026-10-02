@@ -26,9 +26,11 @@ First release.
 
 - A service runs under `systemctl --user`. Stop also disables the service, so a
   service with `Restart=always` stays down.
-- `~/.dsh/dsh-wsl-projects/homes/<folder>/` is the dsh home of one project. The
-  launcher makes the home on the first start and copies the account from
-  `~/.dsh`, so no project asks for a login again.
+- `~/.dsh/dsh-wsl-projects/homes/<folder>-<tag>/` is the dsh home of one
+  project. The tag comes from the path, so two projects with the same folder name
+  in different places get separate homes. The launcher makes the home on the
+  first start and copies the account from `~/.dsh`, so no project asks for a
+  login again.
 - A service records the URL of its own user interface, token included. The panel
   shows the link after the server answers it.
 - The plugin writes shell scripts and starts them inside the distribution. It

@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WslProjects } from '../lib/controller.js'
 import { bash } from '../lib/wsl.js'
-import { cdp } from './ui-probe.mjs'
+import { cdp, homeNameFor } from './ui-probe.mjs'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const read = (file) => readFile(join(root, file), 'utf8')
@@ -199,7 +199,7 @@ if (projects.length >= 2) {
 
   const homes = await bash(ctl.distro(), 'for d in "$HOME/.dsh/dsh-wsl-projects/homes/"*/; do echo "$(basename $d)|$(grep -o \'"path": "[^"]*"\' "$d/storages/workspace.json" 2>/dev/null | head -1)|$([ -s "$d/.credentials.yaml" ] && echo creds)"; done', { timeoutMs: 40000 })
   for (const project of [a, b]) {
-    const line = homes.stdout.split('\n').find((l) => l.startsWith(project.name + '|')) || ''
+    const line = homes.stdout.split('\n').find((l) => l.startsWith(homeNameFor(project.path) + '|')) || ''
     if (line.includes(`"path": "${project.path}"`) && line.includes('creds')) {
       pass(`${project.name} has its own home with the account copied`, line.trim())
     } else {
@@ -217,15 +217,25 @@ if (projects.length >= 2) {
     fail('A port owned by another project is not reused', `asked ${first.port}, got ${step.port}`)
   }
 
-  // A link is offered only when the server answers it.
-  const dead = await bash(ctl.distro(), `url="$(cat "$HOME/.dsh/dsh-wsl-projects/urls/dsh-web-${a.name}" 2>/dev/null)"; echo "\${url%%/\\?token=*}/?token=dead-token-that-cannot-work"; echo "code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "\${url%%/\\?token=*}/?token=dead-token-that-cannot-work")"`, { timeoutMs: 40000 })
-  if (dead.stdout.includes('code=401')) pass('A token the server rejects answers 401, so it is not offered', dead.stdout.trim().split('\n').pop())
-  else fail('A token the server rejects answers 401', dead.stdout.trim())
-
+  // A link is offered only when the server answers it. The live link is read
+  // first, while the service is up: a token can only be judged valid or rejected
+  // by a server that is running, and a stopped one answers nothing but an error.
   const row = (await ctl.units({ awaitUrls: true })).units.find((u) => u.unit === first.unit)
+  if (row?.url) pass('The working service carries a link', row.url.slice(0, 52))
+  else fail('The working service carries a link', 'the units list carries none')
   const live = await bash(ctl.distro(), `curl -s -o /dev/null -w '%{http_code}' --max-time 15 '${row?.url}'`, { timeoutMs: 40000 })
   if (['200', '303'].includes(live.stdout.trim())) pass('The offered link is answered by the server', row.url.slice(0, 52))
   else fail('The offered link is answered by the server', 'code ' + live.stdout.trim())
+
+  // The same server, same port, a token it never issued.
+  const base = String(row?.url || '').split('/?token=')[0]
+  const reject = await bash(ctl.distro(), `curl -s -o /dev/null -w '%{http_code}' --max-time 10 '${base}/?token=dead-token-that-cannot-work'`, { timeoutMs: 40000 })
+  if (reject.stdout.trim() === '401') pass('A token the server rejects answers 401, so it is not offered', base + '/?token=… -> 401')
+  else fail('A token the server rejects answers 401', 'code ' + reject.stdout.trim())
+
+  // A passed check that the panel offers nothing but a checked link: the row of
+  // a live service carries the very URL that answered above.
+  if (row?.url) pass('The link the panel shows is the one that answered', 'the same URL, read from the service list')
 
   const ui = await cdp(9700 + Math.floor(Math.random() * 200), row?.url)
   const flat = (ui || '').replace(/\s+/g, ' ')

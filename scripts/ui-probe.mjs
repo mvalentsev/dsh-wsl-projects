@@ -6,6 +6,23 @@ import { spawn } from 'node:child_process'
 import { mkdtempSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
+
+/**
+ * The name of the dsh home that serves a project, exactly as the launcher builds
+ * it in scripts.js: the folder name with anything unusual turned into a dash, a
+ * trailing dash removed, cut to 40 characters, then a dash and the first eight
+ * characters of the SHA-1 of the path. The checks read homes by this name, so it
+ * has to agree with the launcher.
+ */
+export function homeNameFor(project) {
+  const base = (String(project).replace(/\/+$/, '').split('/').pop() || 'project')
+    .replace(/[^a-zA-Z0-9._]/g, '-')
+    .replace(/-+$/, '')
+    .slice(0, 40) || 'project'
+  const suffix = createHash('sha1').update(String(project)).digest('hex').slice(0, 8)
+  return `${base}-${suffix}`
+}
 
 /**
  * A Chromium-based browser, looked for rather than assumed: `UI_BROWSER`, the

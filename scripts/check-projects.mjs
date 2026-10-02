@@ -111,7 +111,36 @@ const cleaned = (await ctl.units()).units || []
 check(cleaned.some((service) => service.unit === original.unit && service.running), 'the first service still runs')
 check(!cleaned.some((service) => service.unit === started.unit), 'the temporary service is gone')
 
-// 5. Put the machine back. A service this run created is removed; one that was
+// 5. Two projects can carry the same folder name in different places. They must
+//    not share a service or a home: a name built from the folder alone gave them
+//    one of each, and the second project took over the first one's workspace.
+const hole = '/tmp/dsh-same-name'
+await bash(ctl.distro(), `rm -rf ${hole}; mkdir -p ${hole}/one/${'app'} ${hole}/two/${'app'}; sleep 1`, { timeoutMs: 40000 })
+const twinA = await ctl.start({ project: `${hole}/one/app` })
+const twinB = await ctl.start({ project: `${hole}/two/app` })
+if (twinA.ok && twinB.ok) {
+  created.add(twinA.unit)
+  created.add(twinB.unit)
+  for (const port of [twinA.port, twinB.port]) if (port) claimed.add(String(port))
+  check(twinA.unit !== twinB.unit, 'the same folder name in two places gives two services')
+  check(String(twinA.port) !== String(twinB.port), `and two ports (${twinA.port}, ${twinB.port})`)
+  const twinHomes = await bash(ctl.distro(), 'ls "$HOME/.dsh/dsh-wsl-projects/homes" 2>/dev/null | wc -l', { timeoutMs: 20000 })
+  check(Number(twinHomes.stdout.trim()) >= 2, 'and a home each')
+  const refs = await bash(ctl.distro(), `for d in "$HOME/.dsh/dsh-wsl-projects/homes"/*/; do grep -o '"path": "[^"]*"' "$d/storages/workspace.json" 2>/dev/null | head -1; done`, { timeoutMs: 30000 })
+  check(refs.stdout.includes(`${hole}/one/app`) && refs.stdout.includes(`${hole}/two/app`),
+    'each home names its own path, not the other one')
+  await ctl.removeUnit(twinA.unit)
+  await ctl.removeUnit(twinB.unit)
+  created.delete(twinA.unit)
+  created.delete(twinB.unit)
+  claimed.delete(String(twinA.port))
+  claimed.delete(String(twinB.port))
+} else {
+  check(false, 'two projects with the same folder name both start: ' + JSON.stringify(twinA.error || twinB.error))
+}
+await bash(ctl.distro(), `rm -rf ${hole} 2>/dev/null; echo ok`, { timeoutMs: 30000 })
+
+// 6. Put the machine back. A service this run created is removed; one that was
 //    already here is left running, as it was found.
 if (borrowed) {
   const restored = await ctl.start({ project: original.project, port: original.port })

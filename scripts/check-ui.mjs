@@ -12,7 +12,7 @@
 
 import { WslProjects } from '../lib/controller.js'
 import { bash } from '../lib/wsl.js'
-import { cdp } from './ui-probe.mjs'
+import { cdp, homeNameFor } from './ui-probe.mjs'
 
 const ctl = new WslProjects({ distro: process.env.SMOKE_DISTRO || 'Ubuntu' })
 let failures = 0
@@ -60,10 +60,10 @@ for (const line of homes.stdout.trim().split('\n').filter(Boolean)) {
   console.log('  ' + line)
 }
 for (const entry of started) {
-  const slug = entry.project.name
+  const slug = homeNameFor(entry.project.path)
   const line = homes.stdout.split('\n').find((l) => l.startsWith(slug + '|')) || ''
-  check(line.includes('"path": "' + entry.project.path + '"'), slug + "'s home names its own project")
-  check(line.includes('creds'), slug + "'s home has the account")
+  check(line.includes('"path": "' + entry.project.path + '"'), entry.project.name + "'s home names its own project")
+  check(line.includes('creds'), entry.project.name + "'s home has the account")
 }
 
 console.log('')
