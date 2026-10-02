@@ -53,6 +53,40 @@ For the Windows Desktop app use `--profile desktop`; for a plain `dsh web`
 profile use `--profile web`. Then **restart that profile** — bundle membership
 is a startup boundary. Open a new session and the panel appears bottom-right.
 
+Three sources work, and none of them needs a build step or a `prepare` script:
+the client bundle is committed to `lib/`, so pnpm never has to allowlist a
+build.
+
+```powershell
+# a local checkout
+dsh plugin --profile desktop add C:\path\to\dsh-wsl-projects
+
+# a git repository, pinned to a commit for safety
+dsh plugin --profile desktop add github:OWNER/dsh-wsl-projects#<sha>
+
+# an npm release, once published
+dsh plugin --profile desktop add dsh-wsl-projects
+```
+
+`node scripts/check-client.mjs` is worth running before installing a checkout:
+it fails loudly on a broken client bundle.
+
+## Publishing
+
+`npm pack --dry-run` shows the nine files that ship; the tarball carries
+`package.json`, the patch file, the host and client halves, the license, the
+readme and the changelog. The two harnesses stay out of the package on purpose.
+
+```sh
+npm pack --dry-run     # inspect contents
+npm publish            # requires an npm account with rights to the name
+git push origin main   # for the github: source
+```
+
+Community catalogues such as
+[awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)
+accept a pull request adding one entry per plugin.
+
 ## Configuration
 
 Settings may be passed as the plugin row's `config` in a profile patch:
