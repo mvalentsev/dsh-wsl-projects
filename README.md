@@ -25,6 +25,11 @@ This plugin removes that hop. It is a control panel for exactly that instance.
 - **Project list** — every directory under `~/projects` (configurable), newest
   first, annotated with kind (`node` / `python` / `rust` / `go` / `php`) and
   whether it is a git repository.
+- **Project names** — give a project a short label ("Radio Station") and the
+  panel shows that everywhere instead of the folder name. Labels live in
+  `~/.dsh/dsh-wsl-projects/aliases.json` inside the distribution, keyed by
+  absolute path, so a project outside the projects root can be pinned too.
+  Clearing the field restores the folder name.
 - **Start / Stop / Restart** — through `systemctl --user` when the WSL dsh is a
   unit, so a `Restart=always` unit really stays stopped. Falls back to killing
   the port listener, then to a detached spawn, on distributions without systemd.
@@ -41,7 +46,7 @@ This plugin removes that hop. It is a control panel for exactly that instance.
 - **Create service** — when no unit exists yet, writes one and enables it.
 - **Agent tool** — the same operations are exposed to the model as `wsl_dsh`
   (`state`, `projects`, `distros`, `start`, `stop`, `restart`, `read_config`,
-  `write_config`).
+  `write_config`, `set_alias`).
 
 ## Install
 

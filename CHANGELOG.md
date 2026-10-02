@@ -7,8 +7,12 @@ Windows dsh app.
 
 ### Added
 
-- Floating panel (`shell.overlay`) with a project list from `~/projects`
-  (configurable), newest first, annotated with project kind and git presence.
+- Project list from `~/projects` (configurable), newest first, annotated with
+  project kind and git presence.
+- Project labels: a short name per project, kept in
+  `~/.dsh/dsh-wsl-projects/aliases.json` inside the distribution and used by the
+  panel wherever the folder name would appear. Clearing the field restores the
+  folder name.
 - Start / Stop / Restart that go through `systemctl --user` when the WSL dsh is
   a systemd unit, so a `Restart=always` unit really stays stopped. Falls back to
   killing the port listener, then to a detached spawn, without systemd.
@@ -26,8 +30,11 @@ Windows dsh app.
   accepted only with no `Origin` header, or with the Desktop shell's
   `dsh-app://app` origin, or with this server's own origin; anything else is
   refused with `403` before an operation runs.
-- Two offline harnesses: `scripts/check-client.mjs` (client half, 29 checks) and
-  `scripts/smoke.mjs` (host half against a real distribution).
+- Two offline harnesses: `scripts/check-manifest.mjs` (manifest and packaging
+  gate, 27 checks), `scripts/check-client.mjs` (client half plus the host origin
+  policy), and `scripts/smoke.mjs` (host half against a real distribution).
+  `scripts/check-alias.mjs` round-trips the label store against a real
+  distribution.
 
 ### Verified against
 

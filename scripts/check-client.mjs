@@ -62,6 +62,7 @@ globalThis.fetch = async (url) => {
       url: 'http://127.0.0.1:19800/?token=abc',
     },
     projects: [{ name: 'radio', path: '/home/me/projects/radio', kind: 'node', git: true, modifiedAt: 1790000000 }],
+    aliases: { '/home/me/projects/radio': 'Radio Station' },
     configFiles: ['~/.dsh/settings.yaml'],
     defaultPort: 19800,
     apiOrigin: 'http://127.0.0.1:19387',
@@ -203,6 +204,8 @@ check('panel shows the port it acts on', text.includes('19800'), text.slice(0, 2
 check('panel shows the host dsh version', text.includes('0.2.0-rc.2'), text.slice(0, 260))
 check('panel links the token URL', text.includes('Open the WSL dsh UI'), text.slice(0, 260))
 check('managed unit hides the create button', !text.includes('Create service'), text.slice(0, 260))
+check('panel offers renaming a project', text.includes('Save name'), text.slice(0, 300))
+check('panel shows the alias instead of the folder name', text.includes('Radio Station'), text.slice(0, 300))
 
 // --- the panel asks the host over the relative route ------------------------
 
