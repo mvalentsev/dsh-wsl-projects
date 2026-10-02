@@ -40,6 +40,34 @@ window.__DSH_WSL_PROJECTS_SURFACE__ = 'floating'  // a draggable overlay
 All three render the same component and call the same routes; only the slot and
 the chrome differ.
 
+## The model
+
+**A project is the unit of control.** Each project has at most one service, and
+that service has its own port. Nothing is global, so there is no mode to switch
+and no single "current project" to lose track of.
+
+| State of the picked project | What the panel offers |
+| --- | --- |
+| no service yet | **Start** — creates one, on the first free port |
+| service running | **Stop**, and **Restart** beside it |
+| service stopped | **Start** — brings it back on the port it already had |
+
+Starting a project creates or reconfigures *that project's* service and leaves
+every other one alone. That is the whole mechanism behind running several at
+once: pick another project, press Start, and both keep going on their own ports.
+There is deliberately no second command for it — a separate "run also" button
+would imply that starting one project interferes with another, and it does not.
+
+`Stop` also disables the service, so a `Restart=always` unit stays down instead
+of coming back at the next boot. `Restart` re-enables it.
+
+The panel always shows a **Services** list: one row per service with a state
+dot, the project named the way the picker names it, its port, an Open link for a
+running one, and Stop or Start. Stopped services stay in that list — the panel
+reads unit files as well as loaded units, because systemd unloads a disabled
+unit and `list-units` alone would silently drop exactly the services you wanted
+to see.
+
 ## Features
 
 - **Project list** — every directory under `~/projects` (configurable), newest
@@ -52,24 +80,13 @@ the chrome differ.
   Clearing the field restores the folder name.
 - **Start / Stop / Restart** — through `systemctl --user` when the WSL dsh is a
   unit, so a `Restart=always` unit really stays stopped. Falls back to killing
-  the port listener, then to a detached spawn, on distributions without systemd.
-  One primary button changes with the state (Start, Stop, or Create service),
-  beside **Restart on this project**. There is no Refresh button: every action
-  refreshes, and the panel reloads when it is opened.
-- **Several projects at once** — **Run also** starts the selected project as an
-  additional service on the first free port, leaving the current one running.
-  A service binds one project and one port, so two projects means two units;
-  each gets its own `dsh-web-<project>.service` and its own UI URL. Verified on
-  a real machine: `dsh-web.service` on 19800 serving `dev` and
-  `dsh-web-radio.service` on 19801 serving `radio` answered side by side, and
-  the `~/.dsh` state directory did not clash.
-- **A Services list** — always visible at the top of the panel, one row per dsh
-  service: a state dot, the project named the same way the picker names it, the
-  port, and a Stop or Start button. Stopped services stay listed, so "not
-  running" is distinguishable from "no service", and the project picker marks
-  what is already up. This list, not the picker, is the honest answer to which
-  projects are running; the panel reads it from systemd rather than from its own
-  state files.
+  the port listener on distributions without systemd. One button per project,
+  deciding from that project's own state; see [The model](#the-model).
+- **Several projects at once** — an ordinary consequence of the model above,
+  verified on a real machine: `dsh-web.service` on 19800 for `dev` and
+  `dsh-web-llm.service` on 19801 for `llm` ran side by side, stopping one left
+  the other running, and the stopped one came back on the port it had. The
+  shared `~/.dsh` state directory did not clash.
 - **Switch project** — rewrites `WorkingDirectory` as a systemd drop-in
   (`dsh-web.service.d/override.conf`) and restarts the unit. **The port is
   preserved** when you only change the project.
@@ -82,8 +99,9 @@ the chrome differ.
   `cordis.patch.yml` in place.
 - **Create service** — when no unit exists yet, writes one and enables it.
 - **Agent tool** — the same operations are exposed to the model as `wsl_dsh`
-  (`state`, `units`, `projects`, `distros`, `start`, `stop`, `restart`, `run`,
-  `stop_unit`, `restart_unit`, `read_config`, `write_config`, `set_alias`).
+  (`state`, `units`, `projects`, `distros`, `start`, `stop`, `restart`,
+  `stop_unit`, `restart_unit`, `read_config`, `write_config`, `set_alias`), all
+  built on the same project model.
 
 ## Install
 
@@ -241,14 +259,21 @@ of CI.
 Three harnesses run without a browser and without the plugin being installed:
 
 ```sh
-node scripts/check-manifest.mjs   # manifest, exports, packaging invariants
-node scripts/check-client.mjs     # client half: factory, slot, render, state
-node scripts/smoke.mjs            # host half: distros, projects, live status (needs WSL)
+node scripts/check-manifest.mjs    # manifest, exports, packaging invariants
+node scripts/check-client.mjs      # client half: factory, slot, render, decisions
+node scripts/check-theme-tokens.mjs # theme token existence and no colour literals
+node scripts/check-projects.mjs    # the project model against a real distribution
+node scripts/smoke.mjs             # host half: distros, projects, live status (needs WSL)
 ```
 
-`npm run check` runs the first two, which is also what
+`npm run check` runs the first three, which is also what
 [`.github/workflows/checks.yml`](.github/workflows/checks.yml) runs on Node 20,
 22 and 24 for every push and pull request.
+
+`check-projects.mjs` starts a second project beside the one it finds, checks
+that both run, that stopping one leaves the other alone, that a stopped project
+returns on the port it had, and then removes the service it created — so a
+machine ends the way it started.
 
 `check-manifest.mjs` is the gate that keeps a release installable. It asserts
 the `dsh` manifest shape (`manifestVersion`, `bundle.patch` as a path or list,

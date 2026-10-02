@@ -325,10 +325,14 @@ check('the newest project is the fallback',
   T.resolveActiveProject({ selected: '', reportedProject: null, lastReported: null, projects: [{ path: '/first' }] }) === '/first')
 check('no projects resolves to an empty choice',
   T.resolveActiveProject({ selected: '', reportedProject: null, lastReported: null, projects: [] }) === '')
-check('a picked project is what Start aims at',
-  T.resolveLaunchTarget({ selected: '/picked', reportedProject: '/running' }) === '/picked')
-check('with no pick, Start aims at what runs',
-  T.resolveLaunchTarget({ selected: '', reportedProject: '/running' }) === '/running')
+
+// The one decision the panel offers per project.
+check('a running service offers Stop', T.primaryAction({ running: true })?.kind === 'stop')
+check('a running service also offers Restart', T.primaryAction({ running: true })?.offersRestart === true)
+check('a stopped service offers Start', T.primaryAction({ running: false })?.kind === 'start')
+check('a stopped service offers no Restart', T.primaryAction({ running: false })?.offersRestart === false)
+check('a project with no service yet offers Start', T.primaryAction(null)?.kind === 'start')
+check('no service means no Restart either', T.primaryAction(null)?.offersRestart === false)
 
 check('the panel falls back through candidate addresses', T.apiBases().length >= 2, JSON.stringify(T.apiBases()))
 check('our own answers are recognised', T.looksLikeOurAnswer({ ok: true }) && !T.looksLikeOurAnswer({ hello: 'world' }))
@@ -346,18 +350,17 @@ check('trigger is labelled', collectText(closed.trigger).join(' ').includes('WSL
 check('closed seat fetches nothing', closed.fetchCalls.length === 0, JSON.stringify(closed.fetchCalls))
 check('closed seat shows no panel', !closed.text.includes('Restart'), closed.text.slice(0, 160))
 
-// The settings page renders the whole control surface in document flow.
+// The settings page renders the whole control surface in document flow. The
+// button it leads with depends on fetched state, which the fake renderer cannot
+// replay, so the rule behind it is asserted through primaryAction above; here
+// only the structure is checked.
 const docked = await drivePanel(async () => okResponse(), 'dsh-app://app', 'settings', true)
 const dockedText = docked.rerender().text
-check('settings page renders the primary action',
-  dockedText.includes('Stop') || dockedText.includes('Start') || dockedText.includes('Create service'),
+check('settings page renders a primary action', dockedText.includes('Start') || dockedText.includes('Stop'),
   dockedText.slice(0, 240))
-check('settings page offers restarting on the picked project',
-  dockedText.includes('Restart on this project'), dockedText.slice(0, 240))
-check('settings page offers running another project at the same time',
-  dockedText.includes('Run also'), dockedText.slice(0, 240))
-check('the button row stays short', (dockedText.match(/Stop|Start|Restart on this project|Run also|Create service/g) || []).length <= 4,
-  dockedText.slice(0, 240))
+check('settings page lists services', dockedText.includes('Services'), dockedText.slice(0, 300))
+check('starting another project needs no separate command', !dockedText.includes('Run also'), dockedText.slice(0, 300))
+check('the old ambiguous restart label is gone', !dockedText.includes('Restart on this project'), dockedText.slice(0, 300))
 check('settings page offers renaming a project', dockedText.includes('Save name'), dockedText.slice(0, 240))
 check('settings page offers a config editor', dockedText.includes('Edit config'), dockedText.slice(0, 240))
 check('settings page is in flow, without window chrome',
@@ -369,7 +372,8 @@ const floating = await drivePanel(async () => okResponse(), 'dsh-app://app', 'fl
 const floatingText = floating.rerender().text
 check('floating panel keeps its title bar', floatingText.includes('WSL · dsh projects'), floatingText.slice(0, 200))
 check('floating panel keeps its collapse control', floatingText.includes('Collapse'), floatingText.slice(0, 200))
-check('floating panel renders the controls', floatingText.includes('Restart'), floatingText.slice(0, 240))
+check('floating panel renders the controls', floatingText.includes('Start') || floatingText.includes('Stop'),
+  floatingText.slice(0, 240))
 
 // --- surface registration ---------------------------------------------------
 
