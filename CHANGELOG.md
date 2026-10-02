@@ -22,7 +22,10 @@ Windows dsh app.
 - `wsl_dsh` agent tool exposing the same operations
   (`state`, `projects`, `distros`, `start`, `stop`, `restart`, `read_config`,
   `write_config`).
-- REST surface under `/wsl-projects/api/`.
+- REST surface under `/wsl-projects/api/` with an origin policy: a request is
+  accepted only with no `Origin` header, or with the Desktop shell's
+  `dsh-app://app` origin, or with this server's own origin; anything else is
+  refused with `403` before an operation runs.
 - Two offline harnesses: `scripts/check-client.mjs` (client half, 29 checks) and
   `scripts/smoke.mjs` (host half against a real distribution).
 
@@ -39,5 +42,5 @@ Windows dsh app.
 - `systemctl --user` requires systemd in the distribution and a live user bus;
   distributions without it take the spawn fallback, which cannot survive a
   distribution restart.
-- The panel's HTTP routes carry no origin check of their own and rely on the
-  loopback bind, as plugin routes do on a loopback host.
+- The origin policy is not authentication: a local process running as the same
+  user can reach the loopback port directly.

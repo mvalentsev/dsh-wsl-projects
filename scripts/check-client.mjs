@@ -1,7 +1,8 @@
-// Regression harness for the client half. Loads the real bundle with the same
-// globals the shell provides, then drives its plugin through a stubbed Cordis
-// context. It cannot judge pixels, but it does catch a broken factory, a
-// missing export, a wrong slot id and a crash inside apply().
+// Regression harness for the client half plus the host's origin policy. Loads
+// the real bundle with the same globals the shell provides, then drives its
+// plugin through a stubbed Cordis context. It cannot judge pixels, but it does
+// catch a broken factory, a missing export, a wrong slot id and a crash inside
+// apply().
 //
 //   node scripts/check-client.mjs
 
@@ -213,6 +214,15 @@ try {
 } catch (error) {
   check('relative route answers', false, String(error))
 }
+
+// --- origin policy on the host routes ---------------------------------------
+// The policy lives in the host half, so it is asserted here as source shape:
+// a check that silently disappears would reopen the routes to any page.
+
+const hostSource = await readFile(join(here, '..', 'lib', 'index.js'), 'utf8')
+check('host refuses a foreign Origin', hostSource.includes('origin not allowed'))
+check('host accepts the Desktop shell origin', hostSource.includes("'dsh-app://app'"))
+check('host echoes the allowed origin', hostSource.includes('access-control-allow-origin'))
 
 // --- report -----------------------------------------------------------------
 

@@ -162,11 +162,26 @@ a crash inside `apply()` or the render pass.
 ## Security
 
 The plugin runs with your permissions. It executes `systemctl --user`, reads and
-writes files under `~/.dsh/` inside your distribution, and its HTTP routes are
-served on the loopback bind of the profile's own web server. Those routes carry
-no origin check of their own — the same posture as a plugin route on a loopback
-host, and the Desktop shell only forwards them for its own pages. Do not bind
-the profile to a non-loopback host while relying on that.
+writes files under `~/.dsh/` inside your distribution, and serves its routes on
+the loopback bind of the profile's own web server.
+
+Because a stopped service and a rewritten config file are real consequences, the
+routes carry an origin policy. An allowed request is one with no `Origin` header
+(a loopback probe, the server-side agent tool) or one whose `Origin` is the
+Desktop shell's `dsh-app://app` or this server's own origin. Anything else is
+refused with `403` before an operation runs, so an arbitrary page open in a
+browser cannot drive the plugin:
+
+| Request | Result |
+| --- | --- |
+| no `Origin` | allowed |
+| `Origin: dsh-app://app` | allowed (this is how the Desktop panel calls in) |
+| the plugin's own origin | allowed, echoed in `access-control-allow-origin` |
+| any other origin, including a mutation | `403` |
+
+This is not authentication: a process running as you on this machine can still
+reach the loopback port directly. Do not bind the profile to a non-loopback host
+while relying on it.
 
 ## License
 
