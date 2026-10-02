@@ -26,14 +26,16 @@
     "dsh": ">=0.2.0-rc.2 <0.2.1-0"
   },
   "scripts": {
-    "check": "node scripts/check-manifest.mjs && node scripts/check-client.mjs && node scripts/check-theme-tokens.mjs",
+    "check": "node scripts/check-manifest.mjs && node scripts/check-client.mjs && node scripts/check-theme-tokens.mjs && node scripts/check-bash.mjs",
     "check:manifest": "node scripts/check-manifest.mjs",
     "check:client": "node scripts/check-client.mjs",
     "check:theme": "node scripts/check-theme-tokens.mjs",
+    "check:bash": "node scripts/check-bash.mjs",
     "check:projects": "node scripts/check-projects.mjs",
     "check:urls": "node scripts/check-urls.mjs",
     "check:ui": "node scripts/check-ui.mjs",
-    "check:bash": "node scripts/check-bash.mjs",
+    "check:legacy": "node scripts/check-legacy.mjs",
+    "check:alias": "node scripts/check-alias.mjs",
     "check:host": "node scripts/smoke.mjs"
   },
   "keywords": [
