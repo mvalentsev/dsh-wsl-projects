@@ -35,6 +35,8 @@
     "check:urls": "node scripts/check-urls.mjs",
     "check:ui": "node scripts/check-ui.mjs",
     "check:legacy": "node scripts/check-legacy.mjs",
+    "check:shared-home": "node scripts/check-shared-home.mjs",
+    "check:readme": "node scripts/check-readme.mjs",
     "check:alias": "node scripts/check-alias.mjs",
     "check:host": "node scripts/smoke.mjs"
   },

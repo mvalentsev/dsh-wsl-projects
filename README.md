@@ -130,18 +130,32 @@ node scripts/check-bash.mjs          # the generated shell scripts
 The other checks need WSL or Linux:
 
 ```sh
-node scripts/check-projects.mjs   # two projects, one port each
-node scripts/check-urls.mjs       # every link answers
-node scripts/check-legacy.mjs     # a unit from an older version
-node scripts/check-alias.mjs      # the name store
-node scripts/smoke.mjs            # the host half
+node scripts/check-projects.mjs     # two projects, one port each
+node scripts/check-urls.mjs         # every link answers
+node scripts/check-legacy.mjs       # a unit from an older version
+node scripts/check-shared-home.mjs  # the home decides the project
+node scripts/check-alias.mjs        # the name store
+node scripts/smoke.mjs              # the host half
 ```
 
-This check needs a browser:
+These checks need a browser:
 
 ```sh
-node scripts/check-ui.mjs   # a browser shows the correct project
+node scripts/check-ui.mjs      # a browser shows the correct project
+node scripts/check-readme.mjs  # every claim in this file, one at a time
 ```
+
+`check-readme.mjs` is the proof of this document. It holds one entry for each
+claim, finds the evidence, and prints it. A claim with no evidence fails. Run it
+after a change to the readme or to the plugin:
+
+```sh
+node scripts/check-readme.mjs
+```
+
+`check-shared-home.mjs` is an experiment. It starts two processes on one home
+with two different folders, and it shows that both open the project the home
+names. That is the reason for a home per project.
 
 `npm run check` runs the four checks that need only Node. The CI workflow runs
 the same four checks on Node 20, 22 and 24.

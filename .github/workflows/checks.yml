@@ -41,9 +41,11 @@ jobs:
   # with WSL or a local Chromium. They are documented in the README and run by
   # hand; CI would have to fake the very thing these checks exist to observe.
   #
-  #   node scripts/check-projects.mjs   project model against a live distribution
-  #   node scripts/check-urls.mjs       every offered URL answers over HTTP
-  #   node scripts/check-ui.mjs         a browser shows the project it should
-  #   node scripts/check-legacy.mjs     a unit from an older version is repaired
-  #   node scripts/check-alias.mjs      labels round-trip through state()
-  #   node scripts/smoke.mjs            the host half end to end
+  #   node scripts/check-projects.mjs     project model against a live distribution
+  #   node scripts/check-urls.mjs         every offered URL answers over HTTP
+  #   node scripts/check-ui.mjs           a browser shows the project it should
+  #   node scripts/check-legacy.mjs       a unit from an older version is repaired
+  #   node scripts/check-shared-home.mjs  the home decides the project
+  #   node scripts/check-readme.mjs       every claim in the readme, with evidence
+  #   node scripts/check-alias.mjs        labels round-trip through state()
+  #   node scripts/smoke.mjs              the host half end to end
