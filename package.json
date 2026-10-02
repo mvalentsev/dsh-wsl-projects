@@ -32,6 +32,8 @@
     "check:theme": "node scripts/check-theme-tokens.mjs",
     "check:projects": "node scripts/check-projects.mjs",
     "check:urls": "node scripts/check-urls.mjs",
+    "check:ui": "node scripts/check-ui.mjs",
+    "check:bash": "node scripts/check-bash.mjs",
     "check:host": "node scripts/smoke.mjs"
   },
   "keywords": [

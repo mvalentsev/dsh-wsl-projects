@@ -63,10 +63,11 @@ So each service is started with its own home:
 ~/.dsh/dsh-wsl-projects/homes/<folder>/
 ```
 
-The launcher creates it, seeds the account once from `~/.dsh/.credentials.yaml`
-so no project asks for a login again, and exports `DSH_HOME` before starting
-`dsh`. The workspace is then whatever project that service runs, and it cannot be
-anything else.
+The launcher seeds it once from the shared `~/.dsh` — the account, the settings,
+the profile configuration — **except** the workspace storage, which is written to
+name that service's project and nothing else. A fresh home is not enough on its
+own: dsh renders an empty workspace storage as *"choose a workspace"* rather than
+opening the directory it was started in, so the project is recorded explicitly.
 
 A consequence worth knowing: **sessions are per project**, because a dsh home
 holds its own session store. A conversation started in one project is not listed
