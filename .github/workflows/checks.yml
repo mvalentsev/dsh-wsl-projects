@@ -1,0 +1,30 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  offline-checks:
+    name: manifest, client, packaging
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22', '24']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Manifest and packaging gate
+        run: node scripts/check-manifest.mjs
+
+      - name: Client half harness
+        run: node scripts/check-client.mjs
+
+      - name: Package contents
+        run: npm pack --dry-run

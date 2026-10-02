@@ -26,6 +26,8 @@
     "dsh": ">=0.2.0-rc.2 <0.2.1-0"
   },
   "scripts": {
+    "check": "node scripts/check-manifest.mjs && node scripts/check-client.mjs",
+    "check:manifest": "node scripts/check-manifest.mjs",
     "check:client": "node scripts/check-client.mjs",
     "check:host": "node scripts/smoke.mjs"
   },

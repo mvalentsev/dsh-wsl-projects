@@ -141,12 +141,27 @@ the panel stores it, so a direct absolute call remains available as a fallback.
 
 ## Tests
 
-Two harnesses run without a browser and without the plugin being installed:
+Three harnesses run without a browser and without the plugin being installed:
 
 ```sh
-node scripts/check-client.mjs   # client half: factory, slot, render, fetched state
-node scripts/smoke.mjs          # host half: distros, projects, live status (needs WSL)
+node scripts/check-manifest.mjs   # manifest, exports, packaging invariants
+node scripts/check-client.mjs     # client half: factory, slot, render, state
+node scripts/smoke.mjs            # host half: distros, projects, live status (needs WSL)
 ```
+
+`npm run check` runs the first two, which is also what
+[`.github/workflows/checks.yml`](.github/workflows/checks.yml) runs on Node 20,
+22 and 24 for every push and pull request.
+
+`check-manifest.mjs` is the gate that keeps a release installable. It asserts
+the `dsh` manifest shape (`manifestVersion`, `bundle.patch` as a path or list,
+`client.platform`), that every declared path resolves on disk, that the packaged
+`files` list covers `lib` and the patch file, and — the invariant learned the
+hard way — that the package declares **no** `@deepseek-ai/dsh-*` peer range,
+because a range outside the running line makes `dsh plugin add` reject the
+package outright. It also reads the client bundle to confirm it is a plain
+browser script: no `import` statement, registers through
+`window.__ModuleLoader__`, requires nothing beyond `react`.
 
 `check-client.mjs` loads the real `lib/client.js` with the globals the shell
 provides (`window.__ModuleLoader__`, `localStorage`, `location`, `fetch`) and a
