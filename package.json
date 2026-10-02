@@ -1,6 +1,6 @@
 {
   "name": "dsh-wsl-projects",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Run one DeepSeek Harness web server per project inside WSL2, managed from the Windows dsh app: each project gets its own service, port and dsh home.",
   "license": "MIT",
   "author": "Mikhail Valentsev <michael@valentsev.ru>",
@@ -26,6 +26,9 @@
   "files": [
     "lib",
     "cordis.patch.yml",
+    "docs/banner.svg",
+    "docs/panel.svg",
+    "docs/architecture.svg",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

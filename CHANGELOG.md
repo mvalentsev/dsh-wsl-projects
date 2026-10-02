@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+- The package ships the images the readme references, so the npm page shows the
+  banner, the panel and the architecture diagram instead of broken links.
+
 ## 0.2.1
 
 - The package names its repository, its home page and its issue tracker, so the
