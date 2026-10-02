@@ -6,14 +6,23 @@
 import { WslProjects } from '../lib/controller.js'
 
 const ctl = new WslProjects({ distro: process.env.SMOKE_DISTRO || 'Ubuntu' })
-const target = '/home/micha/projects/radio'
-const label = 'Radio Station (round-trip)'
+const label = 'Round-trip label'
 
 const failures = []
 const check = (ok, message) => {
   console.log((ok ? 'PASS ' : 'FAIL ') + message)
   if (!ok) failures.push(message)
 }
+
+// Whichever project this machine happens to have, so the check is not tied to
+// one developer's layout.
+const found = (await ctl.projects()).projects
+const target = process.env.SMOKE_PROJECT || found[0]?.path
+if (!target) {
+  console.log('no project found under the configured projects root')
+  process.exit(1)
+}
+console.log('project: ' + target)
 
 const before = await ctl.state()
 check(before.ok === true, 'state() answers')

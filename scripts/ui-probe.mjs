@@ -1,14 +1,38 @@
-// Проверка того, что видит пользователь: открывает UI каждого сервиса в
-// headless Chrome через CDP и читает видимый текст. Это единственная проверка,
-// которая отвечает на вопрос «какой проект открылся», а не «какая ссылка».
+// What the user actually sees: opens a service's UI in headless Chrome over the
+// debugging protocol and reads the visible text. This is the only check that
+// answers "which project opened" rather than "which link was offered", and it is
+// the one that would have caught the reported bug immediately.
 import { spawn } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+/**
+ * A Chromium-based browser, looked for rather than assumed: `UI_BROWSER`, the
+ * usual install locations per platform, then whatever is on PATH. A missing
+ * browser is reported by `cdp` as a failure instead of a mystery timeout.
+ */
+function findBrowser() {
+  const candidates = [
+    process.env.UI_BROWSER,
+    process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+    'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+  ].filter(Boolean)
+  return candidates.find((candidate) => existsSync(candidate)) || 'chrome'
+}
+
+const CHROME = findBrowser()
 
 async function cdp(port, url) {
+  if (!url) return ''
   const profile = mkdtempSync(join(tmpdir(), 'dsh-ui-'))
   const child = spawn(CHROME, [
     '--headless=new', '--no-sandbox', '--disable-gpu', '--no-first-run',
@@ -24,7 +48,12 @@ async function cdp(port, url) {
       if (target) break
     } catch { /* chrome not up yet */ }
   }
-  if (!target) { child.kill(); rmSync(profile, { recursive: true, force: true }); return null }
+  if (!target) {
+    child.kill()
+    await new Promise((r) => setTimeout(r, 500))
+    try { rmSync(profile, { recursive: true, force: true }) } catch { /* still held */ }
+    return null
+  }
 
   const ws = new WebSocket(target.webSocketDebuggerUrl)
   let id = 0

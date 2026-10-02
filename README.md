@@ -121,30 +121,30 @@ of coming back at the next boot. `Restart` re-enables it.
   `~/.dsh/dsh-wsl-projects/aliases.json` inside the distribution, keyed by
   absolute path, so a project outside the projects root can be pinned too.
   Clearing the field restores the folder name.
-- **Start / Stop / Restart** — through `systemctl --user` when the WSL dsh is a
-  unit, so a `Restart=always` unit really stays stopped. Falls back to killing
-  the port listener on distributions without systemd. One button per project,
-  deciding from that project's own state; see [The model](#the-model).
-- **Several projects at once** — an ordinary consequence of the model above,
-  verified on a real machine: `dsh-web.service` on 19800 for `dev` and
-  `dsh-web-llm.service` on 19801 for `llm` ran side by side, stopping one left
-  the other running, and the stopped one came back on the port it had. The
-  shared `~/.dsh` state directory did not clash.
-- **Switch project** — rewrites `WorkingDirectory` as a systemd drop-in
-  (`dsh-web.service.d/override.conf`) and restarts the unit. **The port is
-  preserved** when you only change the project.
-- **Choose the port** — same drop-in, `ExecStart` rewritten with the new
-  `--port`.
-- **Open the WSL UI** — the panel shows the launch URL *including* the one-shot
-  `?token=`. Because a stop deletes `~/.dsh/web-url.txt`, the token is recovered
-  from the unit journal so the link keeps working.
+- **Start / Stop / Restart** — through `systemctl --user`, so a `Restart=always`
+  service really stays stopped. Falls back to killing the port listener on
+  distributions without systemd. Every control acts on one project; see
+  [The model](#the-model).
+- **Several projects at once** — an ordinary consequence of the model: each
+  project has its own service, its own port and its own dsh home, so they cannot
+  collide. Verified on a real machine with two services side by side, including
+  that stopping one left the other running and that a stopped one came back on
+  the port it had.
+- **Open the WSL UI** — every running service shows its own link, token included,
+  and the link is offered only after the server has answered it. A token belongs
+  to one process, so a link kept from an earlier start would open an expired
+  session; none is offered on trust.
+- **Choose the port** — an empty field takes a free port, a typed one is used
+  unless another project already owns it. Ports are never shared between
+  projects.
+- **Remove a service** — a stopped service can be taken out of the list, which
+  stops it, disables it and deletes its unit along with the records it kept.
 - **Config editor** — read and write `~/.dsh/settings.yaml` and the profile's
   `cordis.patch.yml` in place.
-- **Create service** — when no unit exists yet, writes one and enables it.
 - **Agent tool** — the same operations are exposed to the model as `wsl_dsh`
   (`state`, `units`, `projects`, `distros`, `start`, `stop`, `restart`,
-  `stop_unit`, `restart_unit`, `read_config`, `write_config`, `set_alias`), all
-  built on the same project model.
+  `stop_unit`, `restart_unit`, `remove_unit`, `read_config`, `write_config`,
+  `set_alias`), all built on the same project model.
 
 ## Install
 
@@ -175,6 +175,19 @@ panel; the patch row above is only useful for exercising the host half during
 development, and it is safe to remove once the bundle is in
 `dsh.profile.bundles`.
 
+**Restarting is not optional, and a page reload is not a restart.** Ctrl+R
+replaces the client half only; the host half is loaded when the process starts
+and keeps running until the app is quit. A panel newer than its host is a real
+and confusing state — it was the cause of a long hunt here — so the panel watches
+for it, says plainly that the host is a generation behind, and withholds every
+action rather than sending requests to routes that mean something else now.
+
+Verify it after a restart rather than trusting it:
+
+```sh
+dsh plugin --profile desktop list   # the bundle list should name this package
+```
+
 Three sources work, and none of them needs a build step or a `prepare` script:
 the client bundle is committed to `lib/`, so pnpm never has to allowlist a
 build.
@@ -190,14 +203,15 @@ dsh plugin --profile desktop add github:OWNER/dsh-wsl-projects#<sha>
 dsh plugin --profile desktop add dsh-wsl-projects
 ```
 
-`node scripts/check-client.mjs` is worth running before installing a checkout:
-it fails loudly on a broken client bundle.
+`npm run check` is worth running before installing a checkout: it fails loudly on
+a broken client bundle, an invented theme token, or a manifest the installer
+would reject.
 
 ## Publishing
 
-`npm pack --dry-run` shows the nine files that ship; the tarball carries
+`npm pack --dry-run` shows the files that ship; the tarball carries
 `package.json`, the patch file, the host and client halves, the license, the
-readme and the changelog. The two harnesses stay out of the package on purpose.
+readme and the changelog. The check scripts stay out of the package on purpose.
 
 ```sh
 npm pack --dry-run     # inspect contents
@@ -299,45 +313,73 @@ of CI.
 
 ## Tests
 
-Three harnesses run without a browser and without the plugin being installed:
+Some checks need only Node, some need a real WSL distribution, and the
+interesting ones need a browser. They are split that way on purpose: a check that
+reads a file can confirm that a value was carried through, and only a check that
+reads the screen can confirm the value was the right one.
+
+No WSL, no browser — these run in CI on Node 20, 22 and 24:
 
 ```sh
-node scripts/check-manifest.mjs    # manifest, exports, packaging invariants
-node scripts/check-client.mjs      # client half: factory, slot, render, decisions
-node scripts/check-theme-tokens.mjs # theme token existence and no colour literals
-node scripts/check-projects.mjs    # the project model against a real distribution
-node scripts/smoke.mjs             # host half: distros, projects, live status (needs WSL)
+node scripts/check-manifest.mjs      # manifest, exports, packaging invariants
+node scripts/check-client.mjs        # client half: factory, slot, render, decisions
+node scripts/check-theme-tokens.mjs  # token existence, and no colour literals
+node scripts/check-bash.mjs          # bash -n over every generated script
 ```
 
-`npm run check` runs the first three, which is also what
-[`.github/workflows/checks.yml`](.github/workflows/checks.yml) runs on Node 20,
-22 and 24 for every push and pull request.
+With a distribution (WSL or any Linux with systemd):
 
-`check-projects.mjs` starts a second project beside the one it finds, checks
-that both run, that stopping one leaves the other alone, that a stopped project
-returns on the port it had, and then removes the service it created — so a
-machine ends the way it started.
+```sh
+node scripts/check-projects.mjs   # the project model: two projects, one port each
+node scripts/check-urls.mjs       # every offered URL answers over HTTP
+node scripts/check-legacy.mjs     # a unit from an older version opens its own project
+node scripts/check-alias.mjs      # labels round-trip through state()
+node scripts/smoke.mjs            # the host half end to end
+```
 
-`check-manifest.mjs` is the gate that keeps a release installable. It asserts
-the `dsh` manifest shape (`manifestVersion`, `bundle.patch` as a path or list,
-`client.platform`), that every declared path resolves on disk, that the packaged
-`files` list covers `lib` and the patch file, and — the invariant learned the
-hard way — that the package declares **no** `@deepseek-ai/dsh-*` peer range,
-because a range outside the running line makes `dsh plugin add` reject the
-package outright. It also reads the client bundle to confirm it is a plain
-browser script: no `import` statement, registers through
-`window.__ModuleLoader__`, requires nothing beyond `react`.
+With a browser (`UI_BROWSER` overrides the path):
 
-`check-client.mjs` loads the real `lib/client.js` with the globals the shell
-provides (`window.__ModuleLoader__`, `localStorage`, `location`, `fetch`) and a
-stub `react`, then drives the plugin through a stubbed Cordis context: it
-asserts the factory shape, that `apply()` registers into `shell.overlay`, that
-the panel renders, and — after letting the host answer — that the fetched state
-reaches the panel (project list, unit name, port, version, token link). It
-cannot judge pixels; it catches a broken bundle, a wrong slot, a bad export and
-a crash inside `apply()` or the render pass.
+```sh
+node scripts/check-ui.mjs   # a real browser shows each project as itself
+```
 
-`smoke.mjs` exercises the host half against a real distribution.
+`npm run check` runs the four offline gates.
+
+What each one is for:
+
+- **`check-manifest.mjs`** keeps a release installable: the `dsh` manifest shape,
+  that every declared path resolves, that `files` covers `lib` and the patch
+  file, and — learned the hard way — that the package declares **no**
+  `@deepseek-ai/dsh-*` peer range, because a range outside the running line makes
+  `dsh plugin add` reject the package outright. It also confirms the client
+  bundle is a plain browser script: no `import`, registers through
+  `window.__ModuleLoader__`, requires nothing beyond `react`.
+- **`check-client.mjs`** loads the real `lib/client.js` with the globals the shell
+  provides and drives the plugin through a stubbed Cordis context. Its renderer
+  is hand-rolled, which is a real limit: it can assert structure and pure
+  decisions, and it cannot replay React's update cycle. Anything about what
+  reaches the screen belongs in `check-ui.mjs` instead.
+- **`check-bash.mjs`** runs `bash -n` over every script the plugin generates. A
+  syntax error in generated shell is otherwise invisible until a service fails to
+  start, and the launcher is the one file that decides which project a service
+  serves.
+- **`check-projects.mjs`** drives the model against a real distribution: two
+  projects at once, stopping one leaves the other, a stopped project returns on
+  its port, and everything it created is removed afterwards. It is self-contained
+  — it seeds the services it needs and ends by leaving the machine as it found
+  it.
+- **`check-urls.mjs`** requests every URL the panel would offer and asserts the
+  server answers it. This exists because a token belongs to one process: a stale
+  link looks exactly like a working one until it is clicked.
+- **`check-ui.mjs`** is the one that reads the result rather than the intention.
+  It opens each service in headless Chrome over the debugging protocol and
+  asserts the visible text names that project, does not name the other, and is
+  not the workspace picker. Every file-level check passed while the panel was
+  still serving the wrong project; this is the check that would have caught it.
+- **`check-legacy.mjs`** writes a unit exactly as an older version of the plugin
+  wrote it — no project argument, `DSH_HOME` pointing at the shared home — and
+  asserts that the current launcher still ends up serving that unit's own
+  project.
 
 ## Security
 

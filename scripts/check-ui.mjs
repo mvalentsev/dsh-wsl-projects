@@ -22,13 +22,23 @@ const check = (ok, msg) => {
 }
 
 const projects = (await ctl.projects()).projects
-const chosen = ['dev', 'radio']
-  .map((name) => projects.find((p) => p.name === name))
-  .filter(Boolean)
+// The first two this machine has. Names are read from the machine rather than
+// written here, so the check travels between layouts. `SMOKE_PROJECT_A` and
+// `SMOKE_PROJECT_B` override the choice.
+const named = (path) => projects.find((project) => project.path === path)
+const chosen = [
+  named(process.env.SMOKE_PROJECT_A),
+  named(process.env.SMOKE_PROJECT_B),
+].filter(Boolean)
 if (chosen.length < 2) {
-  console.log('need two known projects (dev, radio); found ' + projects.map((p) => p.name).join(','))
+  chosen.length = 0
+  chosen.push(...projects.slice(0, 2))
+}
+if (chosen.length < 2) {
+  console.log('need two projects under the configured projects root; found ' + projects.length)
   process.exit(1)
 }
+console.log('projects: ' + chosen.map((p) => p.name).join(', '))
 
 console.log('=== starting from nothing: removing services and per-project homes ===')
 for (const unit of (await ctl.units()).units || []) await ctl.removeUnit(unit.unit)
@@ -67,8 +77,9 @@ for (const entry of started) {
   check(!/Choose a workspace/i.test(text || ''), entry.project.name + ': the UI opened a project, not the picker')
   check(new RegExp('\\b' + entry.project.name + '\\b').test(text || ''), entry.project.name + ': the UI names ' + entry.project.name)
   const other = started.find((s) => s.unit !== entry.unit).project.name
-  check(!new RegExp('\\b' + other + '\\b').test(text || ''), entry.project.name + ': the UI does not name ' + other)
-}
+  // The regression was one project's UI naming another, so the absence matters
+  // as much as the presence.
+  check(!new RegExp('\\b' + other + '\\b').test(text || ''), entry.project.name + ': the UI does not name ' + other)}
 
 console.log('')
 console.log('=== cleanup ===')

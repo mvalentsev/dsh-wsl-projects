@@ -9,15 +9,33 @@
 // readable archive the check says so instead of passing quietly.
 
 import { readFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
 
-const archive = process.argv[2]
-  || process.env.DSH_ASAR
-  || 'C:/Users/micha/AppData/Local/Programs/DeepSeek Harness/resources/app.asar'
+/**
+ * The engine's archive, which is where the token inventory lives. The location
+ * differs per machine and per platform, so it is looked for rather than assumed:
+ * `--asar`, then `DSH_ASAR`, then the usual install directories. A checkout
+ * without an engine is honest about it below instead of failing obscurely.
+ */
+function findArchive() {
+  const candidates = [
+    process.argv[2],
+    process.env.DSH_ASAR,
+    process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, 'Programs', 'DeepSeek Harness', 'resources', 'app.asar'),
+    process.env.ProgramFiles && join(process.env.ProgramFiles, 'DeepSeek Harness', 'resources', 'app.asar'),
+    '/Applications/DeepSeek Harness.app/Contents/Resources/app.asar',
+    '/usr/lib/deepseek-harness/resources/app.asar',
+    '/opt/DeepSeek Harness/resources/app.asar',
+  ].filter(Boolean)
+  return candidates.find((candidate) => existsSync(candidate)) || candidates[0]
+}
+
+const archive = findArchive()
 
 const failures = []
 const notes = []
@@ -53,7 +71,8 @@ try {
   if (at > 0) darkBlock = text.slice(at, at + 400000)
   notes.push('NOTE app theming: follows prefers-color-scheme (no manual toggle in the UI)')
 } catch (error) {
-  notes.push('NOTE could not read the engine archive (' + String(error.message).slice(0, 90) + ')')
+  notes.push('NOTE could not read the engine archive at ' + archive + ' (' + String(error.message).slice(0, 60) + ')')
+  notes.push('NOTE pass the path as an argument or set DSH_ASAR to check token existence')
 }
 
 if (engineTokens) {

@@ -6,8 +6,10 @@ on:
   pull_request:
 
 jobs:
+  # These need nothing but Node and bash, so they run on every push and for every
+  # supported Node version.
   offline-checks:
-    name: manifest, client, packaging
+    name: manifest, client, theme, scripts
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -29,5 +31,19 @@ jobs:
       - name: Theme token consistency
         run: node scripts/check-theme-tokens.mjs
 
+      - name: Generated shell scripts parse
+        run: node scripts/check-bash.mjs
+
       - name: Package contents
         run: npm pack --dry-run
+
+  # The rest drive a real distribution and a real browser, so they need a machine
+  # with WSL or a local Chromium. They are documented in the README and run by
+  # hand; CI would have to fake the very thing these checks exist to observe.
+  #
+  #   node scripts/check-projects.mjs   project model against a live distribution
+  #   node scripts/check-urls.mjs       every offered URL answers over HTTP
+  #   node scripts/check-ui.mjs         a browser shows the project it should
+  #   node scripts/check-legacy.mjs     a unit from an older version is repaired
+  #   node scripts/check-alias.mjs      labels round-trip through state()
+  #   node scripts/smoke.mjs            the host half end to end

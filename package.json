@@ -1,7 +1,7 @@
 {
   "name": "dsh-wsl-projects",
-  "version": "0.1.0",
-  "description": "Manage DeepSeek Harness instances running inside WSL from the Windows DSH app: pick a project, start/stop/restart the WSL dsh web server, choose the port, and edit its configs.",
+  "version": "0.2.0",
+  "description": "Run one DeepSeek Harness web server per project inside WSL2, managed from the Windows dsh app: each project gets its own service, port and dsh home.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
