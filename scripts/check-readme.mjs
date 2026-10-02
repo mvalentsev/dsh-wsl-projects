@@ -93,18 +93,23 @@ await code('Ports are not shared between projects',
 
 // -------------------------------------------------------------- requirements
 
-checkManifest()
-function checkManifest() {
-  const scripts = manifest.scripts || {}
-  const offline = ['check:manifest', 'check:client', 'check:theme', 'check:bash']
-  const missing = offline.filter((name) => !scripts[name])
-  if (missing.length) return fail('npm run check runs the four checks that need only Node', 'missing: ' + missing.join(', '))
-  const chain = offline.map((name) => scripts[name].split(' ').pop())
-  const run = scripts.check || ''
-  if (!chain.every((script) => run.includes(script))) {
-    return fail('npm run check runs the four checks that need only Node', 'check does not chain all four: ' + run)
-  }
-  return pass('npm run check runs the four checks that need only Node', scripts.check)
+const scripts = manifest.scripts || {}
+// `npm run check` is the one command that runs everything, and it reports the
+// checks it could not run rather than passing them silently.
+if ((scripts.check || '').includes('check-all.mjs')) {
+  pass('npm run check runs every check in one sequence', scripts.check)
+} else {
+  fail('npm run check runs every check in one sequence', 'check is: ' + scripts.check)
+}
+if ((scripts['check:offline'] || '').includes('--offline')) {
+  pass('a subset exists for a machine without a distribution', scripts['check:offline'])
+} else {
+  fail('a subset exists for a machine without a distribution', 'check:offline is: ' + scripts['check:offline'])
+}
+if ((await read('scripts/check-all.mjs')).includes('skipped')) {
+  pass('a check that cannot run is reported as skipped', 'scripts/check-all.mjs')
+} else {
+  fail('a check that cannot run is reported as skipped', 'check-all.mjs never mentions skipping')
 }
 
 const workflow = await read('.github/workflows/checks.yml')
@@ -136,7 +141,7 @@ else fail('package.json declares MIT', 'license: ' + manifest.license)
 for (const path of ['scripts/check-manifest.mjs', 'scripts/check-client.mjs', 'scripts/check-theme-tokens.mjs',
   'scripts/check-bash.mjs', 'scripts/check-projects.mjs', 'scripts/check-urls.mjs', 'scripts/check-legacy.mjs',
   'scripts/check-shared-home.mjs', 'scripts/check-alias.mjs', 'scripts/smoke.mjs', 'scripts/check-ui.mjs',
-  'scripts/check-readme.mjs']) {
+  'scripts/check-readme.mjs', 'scripts/check-all.mjs', 'scripts/check-pack.mjs']) {
   file('The readme names a check that exists: ' + path, path)
 }
 

@@ -89,12 +89,18 @@ async function cdp(port, url) {
 
   // The UI boots, asks the host for its workspace and only then renders the
   // project, so the text is polled until it settles rather than read once.
+  //
+  // "Settled" cannot mean "not empty": the first screen is a splash that says
+  // `HARNESS Loading plugins…`, which is longer than twenty characters, contains
+  // no workspace picker, and made a caller conclude the project was missing. The
+  // poll waits for a screen that is neither the splash nor the picker.
+  const UNFINISHED = /Choose a workspace|Loading plugins|Initializing|Starting/i
   let text = ''
-  for (let i = 0; i < 40; i += 1) {
+  for (let i = 0; i < 45; i += 1) {
     await new Promise((r) => setTimeout(r, 1000))
     const result = await send('Runtime.evaluate', { expression: 'document.body.innerText', returnByValue: true })
     text = result?.result?.value || ''
-    if (text && !/Choose a workspace/i.test(text) && text.length > 20) break
+    if (text.length > 20 && !UNFINISHED.test(text)) break
   }
   ws.close()
   child.kill()

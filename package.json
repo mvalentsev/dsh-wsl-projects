@@ -26,7 +26,9 @@
     "dsh": ">=0.2.0-rc.2 <0.2.1-0"
   },
   "scripts": {
-    "check": "node scripts/check-manifest.mjs && node scripts/check-client.mjs && node scripts/check-theme-tokens.mjs && node scripts/check-bash.mjs",
+    "check": "node scripts/check-all.mjs",
+    "check:offline": "node scripts/check-all.mjs --offline",
+    "check:all": "node scripts/check-all.mjs",
     "check:manifest": "node scripts/check-manifest.mjs",
     "check:client": "node scripts/check-client.mjs",
     "check:theme": "node scripts/check-theme-tokens.mjs",

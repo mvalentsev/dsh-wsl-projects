@@ -127,14 +127,32 @@ another.
 
 ## Tests
 
-Five checks need only Node:
+One command runs everything:
 
 ```sh
-node scripts/check-manifest.mjs      # manifest, exports, package contents
-node scripts/check-client.mjs        # the client half
-node scripts/check-theme-tokens.mjs  # the theme tokens
-node scripts/check-bash.mjs          # the generated shell scripts
-node scripts/check-pack.mjs          # the tarball installs and starts
+npm run check            # every check, in one sequence
+npm run check:offline    # only the checks that need no distribution
+```
+
+It prints one line per check, and a check that cannot run on this machine is
+reported as skipped with the reason. Nothing passes silently.
+
+The checks, and what each one needs:
+
+```sh
+node scripts/check-manifest.mjs      # manifest, exports, package contents   (Node)
+node scripts/check-client.mjs        # the client half                       (Node)
+node scripts/check-theme-tokens.mjs  # the theme tokens                      (Node)
+node scripts/check-bash.mjs          # the generated shell scripts           (Node, bash when reachable)
+node scripts/check-pack.mjs          # the tarball installs and starts       (Node, a profile)
+node scripts/check-projects.mjs      # two projects, one port each           (distribution)
+node scripts/check-urls.mjs          # every link answers                    (distribution)
+node scripts/check-legacy.mjs        # a unit from an older version          (distribution)
+node scripts/check-shared-home.mjs   # the home decides the project          (distribution)
+node scripts/check-alias.mjs         # the name store                        (distribution)
+node scripts/check-ui.mjs            # a browser shows the correct project   (browser)
+node scripts/check-readme.mjs        # every claim in this file              (distribution)
+node scripts/check-all.mjs           # all of the above in one sequence      (whatever is present)
 ```
 
 `check-pack.mjs` packs the plugin, installs that tarball into a profile it makes
@@ -142,24 +160,6 @@ from a copy of yours, starts a server on it, and asks that server for the
 plugin's route. A file left out of `files`, an export that does not resolve, or a
 manifest that installs but does not load are all invisible from the checkout and
 visible here. Without a profile it checks the tarball contents and says so.
-
-The other checks need WSL or Linux:
-
-```sh
-node scripts/check-projects.mjs     # two projects, one port each
-node scripts/check-urls.mjs         # every link answers
-node scripts/check-legacy.mjs       # a unit from an older version
-node scripts/check-shared-home.mjs  # the home decides the project
-node scripts/check-alias.mjs        # the name store
-node scripts/smoke.mjs              # the host half
-```
-
-These checks need a browser:
-
-```sh
-node scripts/check-ui.mjs      # a browser shows the correct project
-node scripts/check-readme.mjs  # every claim in this file, one at a time
-```
 
 `check-readme.mjs` is the proof of this document. It holds one entry for each
 claim, finds the evidence, and prints it. A claim with no evidence fails. Run it
@@ -173,8 +173,10 @@ node scripts/check-readme.mjs
 with two different folders, and it shows that both open the project the home
 names. That is the reason for a home per project.
 
-`npm run check` runs the four checks that need only Node. The CI workflow runs
-the same four checks on Node 20, 22 and 24.
+`npm run check` runs every check, in one sequence, and reports what each one
+covers. A check that cannot run on this machine is reported as skipped with the
+reason, not as a pass. `npm run check:offline` runs only the checks that need
+Node. The CI workflow runs the same command on Node 20, 22 and 24.
 
 You can set `SMOKE_DISTRO`, `SMOKE_PROJECT`, `SMOKE_PROJECT_A`,
 `SMOKE_PROJECT_B`, `DSH_ASAR` and `UI_BROWSER` for your machine.

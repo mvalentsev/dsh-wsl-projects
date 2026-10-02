@@ -34,6 +34,9 @@ jobs:
       - name: Generated shell scripts parse
         run: node scripts/check-bash.mjs
 
+      - name: Every check that can run here
+        run: node scripts/check-all.mjs
+
       - name: Packaged plugin installs and starts
         run: node scripts/check-pack.mjs
 
