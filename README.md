@@ -62,8 +62,14 @@ the chrome differ.
   each gets its own `dsh-web-<project>.service` and its own UI URL. Verified on
   a real machine: `dsh-web.service` on 19800 serving `dev` and
   `dsh-web-radio.service` on 19801 serving `radio` answered side by side, and
-  the `~/.dsh` state directory did not clash. When more than one service exists
-  the panel lists them with their ports and a Stop for each.
+  the `~/.dsh` state directory did not clash.
+- **A Services list** — always visible at the top of the panel, one row per dsh
+  service: a state dot, the project named the same way the picker names it, the
+  port, and a Stop or Start button. Stopped services stay listed, so "not
+  running" is distinguishable from "no service", and the project picker marks
+  what is already up. This list, not the picker, is the honest answer to which
+  projects are running; the panel reads it from systemd rather than from its own
+  state files.
 - **Switch project** — rewrites `WorkingDirectory` as a systemd drop-in
   (`dsh-web.service.d/override.conf`) and restarts the unit. **The port is
   preserved** when you only change the project.
