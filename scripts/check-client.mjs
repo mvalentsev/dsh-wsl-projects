@@ -149,6 +149,8 @@ async function drivePanel(fetchImpl, pageOrigin = 'dsh-app://app', surface = nul
   const loaded = []
   const fetchCalls = []
   const storage = new Map()
+  const timers = []
+  const documentListeners = []
 
   globalThis.window = {
     __ModuleLoader__: { load: (spec) => loaded.push(spec) },
@@ -163,6 +165,21 @@ async function drivePanel(fetchImpl, pageOrigin = 'dsh-app://app', surface = nul
     getItem: (key) => (storage.has(key) ? storage.get(key) : null),
     setItem: (key, value) => storage.set(key, String(value)),
     removeItem: (key) => storage.delete(key),
+  }
+  // The panel reads while it is open, so it sets an interval and listens for the
+  // window to come back. Both are stubbed: an interval that is never cleared
+  // keeps this process alive for ever, and a real listener would outlive the
+  // check that added it. The stubs also make the reading testable.
+  timers.length = 0
+  documentListeners.length = 0
+  globalThis.setInterval = (fn, ms) => { timers.push({ fn, ms }); return timers.length }
+  globalThis.clearInterval = (id) => { if (id) timers[id - 1] = null }
+  globalThis.setTimeout = (fn) => { fn(); return 0 }
+  globalThis.clearTimeout = () => {}
+  globalThis.document = {
+    visibilityState: 'visible',
+    addEventListener: (name) => { documentListeners.push(name) },
+    removeEventListener: () => {},
   }
   globalThis.location = { origin: pageOrigin, protocol: pageOrigin.split(':')[0] + ':' }
   globalThis.fetch = async (url, options) => {
@@ -236,6 +253,9 @@ async function drivePanel(fetchImpl, pageOrigin = 'dsh-app://app', surface = nul
     secondError,
     fetchCalls,
     rendered: renderedComponents.slice(),
+    /** The intervals the panel set, and the listeners it added. */
+    timers: timers.filter(Boolean).map((t) => t.ms),
+    documentListeners: documentListeners.slice(),
     ownerKeys: [React.__owner(registration?.[2])],
     text: collectText(tree).join(' | '),
     /** The first focusable element of the seat: its trigger button. */
@@ -310,6 +330,14 @@ check('relative route is tried first',
   JSON.stringify(healthy.fetchCalls.slice(0, 3)))
 check('the open seat mounts the panel component', healthy.rendered.includes('Panel'), JSON.stringify(healthy.rendered))
 
+// The panel has to keep reading while it is open. A service can stop on its own,
+// and a link the panel checked once is exactly the promise this panel makes: it
+// says a link works. A reading that never happens makes that a lie.
+check('the panel reads on a timer while it is open',
+  healthy.timers.some((ms) => typeof ms === 'number' && ms > 0 && ms <= 15000), JSON.stringify(healthy.timers))
+check('the panel reads again when the window comes back',
+  healthy.documentListeners.includes('visibilitychange'), JSON.stringify(healthy.documentListeners))
+
 // --- pure derivations ------------------------------------------------------
 // A hand-rolled renderer cannot be trusted to replay React's update cycle, so
 // the data-facing logic is asserted directly instead of through the tree.
@@ -380,6 +408,9 @@ check('sidebar seat renders a trigger', Boolean(closed.trigger), closed.text.sli
 check('trigger is labelled', collectText(closed.trigger).join(' ').includes('WSL projects'), collectText(closed.trigger).join(' '))
 check('closed seat fetches nothing', closed.fetchCalls.length === 0, JSON.stringify(closed.fetchCalls))
 check('closed seat shows no panel', !closed.text.includes('Restart'), closed.text.slice(0, 160))
+// A closed panel must not read either: it would ask the distribution for state
+// that nobody is looking at.
+check('a closed seat starts no reading', closed.timers.length === 0, JSON.stringify(closed.timers))
 
 // The settings page renders the whole control surface in document flow. The
 // button it leads with depends on fetched state, which the fake renderer cannot

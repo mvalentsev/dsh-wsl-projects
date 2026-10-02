@@ -16,6 +16,10 @@ and these controls:
 - **Restart** restarts that service.
 - **Remove** deletes a stopped service.
 
+The panel reads the state again every five seconds while it is open, and when the
+window comes back. A service can stop on its own, and a link can go dead. The
+panel shows what is true now, not what was true when it opened.
+
 **Start a project** starts one project. The section holds a filter box, the
 project picker, a name, a port and one button.
 

@@ -64,6 +64,10 @@ await code('The panel has a Port field', 'lib/client.js', "h('span', { style: S.
 await code('The start button names its scope',
   'lib/client.js', "'Start a service for this project'")
 await code('The panel edits the configured files', 'lib/client.js', "post('/config'")
+await code('The panel reads the state again while it is open',
+  'lib/client.js', 'const READ_INTERVAL_MS = 5000')
+await code('The panel reads again when the window comes back',
+  'lib/client.js', "document.addEventListener('visibilitychange'")
 
 // ------------------------------------------------------------------ the model
 
