@@ -53,6 +53,17 @@ the chrome differ.
 - **Start / Stop / Restart** — through `systemctl --user` when the WSL dsh is a
   unit, so a `Restart=always` unit really stays stopped. Falls back to killing
   the port listener, then to a detached spawn, on distributions without systemd.
+  One primary button changes with the state (Start, Stop, or Create service),
+  beside **Restart on this project**. There is no Refresh button: every action
+  refreshes, and the panel reloads when it is opened.
+- **Several projects at once** — **Run also** starts the selected project as an
+  additional service on the first free port, leaving the current one running.
+  A service binds one project and one port, so two projects means two units;
+  each gets its own `dsh-web-<project>.service` and its own UI URL. Verified on
+  a real machine: `dsh-web.service` on 19800 serving `dev` and
+  `dsh-web-radio.service` on 19801 serving `radio` answered side by side, and
+  the `~/.dsh` state directory did not clash. When more than one service exists
+  the panel lists them with their ports and a Stop for each.
 - **Switch project** — rewrites `WorkingDirectory` as a systemd drop-in
   (`dsh-web.service.d/override.conf`) and restarts the unit. **The port is
   preserved** when you only change the project.
@@ -65,8 +76,8 @@ the chrome differ.
   `cordis.patch.yml` in place.
 - **Create service** — when no unit exists yet, writes one and enables it.
 - **Agent tool** — the same operations are exposed to the model as `wsl_dsh`
-  (`state`, `projects`, `distros`, `start`, `stop`, `restart`, `read_config`,
-  `write_config`, `set_alias`).
+  (`state`, `units`, `projects`, `distros`, `start`, `stop`, `restart`, `run`,
+  `stop_unit`, `restart_unit`, `read_config`, `write_config`, `set_alias`).
 
 ## Install
 

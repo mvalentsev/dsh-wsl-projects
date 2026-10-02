@@ -349,12 +349,20 @@ check('closed seat shows no panel', !closed.text.includes('Restart'), closed.tex
 // The settings page renders the whole control surface in document flow.
 const docked = await drivePanel(async () => okResponse(), 'dsh-app://app', 'settings', true)
 const dockedText = docked.rerender().text
-check('settings page renders the controls',
-  dockedText.includes('Start') && dockedText.includes('Stop') && dockedText.includes('Restart'), dockedText.slice(0, 240))
+check('settings page renders the primary action',
+  dockedText.includes('Stop') || dockedText.includes('Start') || dockedText.includes('Create service'),
+  dockedText.slice(0, 240))
+check('settings page offers restarting on the picked project',
+  dockedText.includes('Restart on this project'), dockedText.slice(0, 240))
+check('settings page offers running another project at the same time',
+  dockedText.includes('Run also'), dockedText.slice(0, 240))
+check('the button row stays short', (dockedText.match(/Stop|Start|Restart on this project|Run also|Create service/g) || []).length <= 4,
+  dockedText.slice(0, 240))
 check('settings page offers renaming a project', dockedText.includes('Save name'), dockedText.slice(0, 240))
 check('settings page offers a config editor', dockedText.includes('Edit config'), dockedText.slice(0, 240))
 check('settings page is in flow, without window chrome',
   !dockedText.includes('Collapse') && !dockedText.includes('Close'), dockedText.slice(0, 200))
+check('no separate refresh button duplicates the actions', !dockedText.includes('Refresh'), dockedText.slice(0, 240))
 
 // The overlay variant keeps its window chrome.
 const floating = await drivePanel(async () => okResponse(), 'dsh-app://app', 'floating', true)
