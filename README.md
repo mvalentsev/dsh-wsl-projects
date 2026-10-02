@@ -183,6 +183,42 @@ in the Desktop app and in a plain browser with no CORS involvement. The host
 half also reports the loopback origin it is bound to in `GET …/api/state`, and
 the panel stores it, so a direct absolute call remains available as a fallback.
 
+## Theming
+
+The panel owns no colour of its own. Every value comes from the host's
+`--dsw-alias-*` tokens, read bare — with no literal fallback — so the light and
+dark schemes are whatever the host says they are, and switching the OS scheme
+re-renders the panel with it.
+
+The app themes itself by following `prefers-color-scheme` (there is no in-app
+toggle): the light values sit on `body` and a
+`@media (prefers-color-scheme: dark) { body { … } }` block re-points them. The
+tokens this panel uses are among those re-pointed, which is why it follows:
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `--dsw-alias-label-primary` | `#0f1115` | `#f9fafb` |
+| `--dsw-alias-label-secondary` | `#61666b` | `#cfd3d6` |
+| `--dsw-alias-border-l2` | `#0000001a` | `#ffffff1f` |
+| `--dsw-alias-button-elevated-fill` | `#fff` | `#43454a` |
+| `--dsw-alias-label-primary-inverted` | `#fff` | `#353638` |
+
+Two rules follow from a bug this project actually shipped, where the panel
+rendered a white card with near-black text on a dark theme:
+
+1. **Never invent a token name.** The panel had asked for
+   `--dsw-alias-bg-elevated`, `--dsw-alias-success`, `--dsw-label-error`,
+   `--dsw-bg-error`, `--dsw-border-error` and `--dsw-shadow-lg`; none exist.
+2. **Never pair a token with a colour literal.** `var(--dsw-alias-label-primary, #1f2329)`
+   renders near-black text in dark mode, because the fallback only applies when
+   the token is missing — and the missing token is exactly the case that hides
+   the mistake.
+
+`scripts/check-theme-tokens.mjs` enforces both: it reads the installed engine's
+token inventory (423 tokens), fails on any token the panel invents, and fails on
+any colour literal used as a `var()` fallback. It is part of `npm run check` and
+of CI.
+
 ## Tests
 
 Three harnesses run without a browser and without the plugin being installed:
