@@ -42,18 +42,46 @@ the chrome differ.
 
 ## The model
 
-**A project is the unit of control.** Each project has at most one service, and
-that service has its own port. Nothing is global, so there is no mode to switch
-and no single "current project" to lose track of.
+**A project is the unit of control.** Each project has its own service, its own
+port and its own dsh home. Nothing is global, so there is no mode to switch and
+no single "current project" to lose track of.
+
+### Why each project needs its own dsh home
+
+This is the part that is easy to get wrong, and it was wrong here first.
+
+`dsh` records the workspace it has open in `$DSH_HOME/storages/workspace.json`,
+and it opens **that** workspace rather than the directory the process was started
+in. With one shared `~/.dsh`, every service reads the same file: start a second
+project on a second port and it still serves whichever project was opened last.
+From outside that looks like "I started this project and got that one", and no
+amount of fixing ports or tokens helps, because neither is the cause.
+
+So each service is started with its own home:
+
+```
+~/.dsh/dsh-wsl-projects/homes/<folder>/
+```
+
+The launcher creates it, seeds the account once from `~/.dsh/.credentials.yaml`
+so no project asks for a login again, and exports `DSH_HOME` before starting
+`dsh`. The workspace is then whatever project that service runs, and it cannot be
+anything else.
+
+A consequence worth knowing: **sessions are per project**, because a dsh home
+holds its own session store. A conversation started in one project is not listed
+in another. The old shared home keeps everything that was there before.
+
+### The panel
 
 The panel is two sections, in the order the questions get asked.
 
 **Services** — what exists right now, one row per service: a state dot, the
-project, `running` or `stopped`, its port, and the controls that act on *that
-service* — `Open` while it runs, `Stop` or `Start`, and `Restart`. A stopped
-service stays in the list, and the panel reads unit files as well as loaded
-units, because systemd unloads a disabled unit and `list-units` alone would drop
-exactly the services you wanted to see.
+project, `running`, `starting…` or `stopped`, its port, and the controls that act
+on *that service* — `Open` while it runs, `Stop` or `Start`, `Restart`, and
+`Remove` once it is stopped. A stopped service stays in the list, and the panel
+reads unit files as well as loaded units, because systemd unloads a disabled unit
+and `list-units` alone would drop exactly the services you wanted to see.
 
 **Start a project** — the one thing the panel can add: a filter box, the project
 picker, an optional short name, an optional port, and a single button reading
@@ -61,15 +89,20 @@ picker, an optional short name, an optional port, and a single button reading
 a free port and never touches another, so running several at once is that same
 action repeated on another project.
 
-Two rules keep this readable, both learned from a screenshot where two buttons
-read "Start" with different meanings:
+Three rules keep this honest, each learned from something that actually went
+wrong:
 
 1. **Every control names its scope.** A button inside a service row acts on that
    row; the button in the lower section acts on the picked project. No label is
    reused between the two.
 2. **Nothing is offered that cannot work.** While the picked project already
-   runs, its start button is disabled and says why, instead of starting a
-   duplicate or silently re-pointing the running service.
+   runs, its start button is disabled and says why. A URL is offered only after
+   the server has proved it answers, because a token belongs to one process and a
+   dead link looks exactly like a working one until it is clicked.
+3. **A port belongs to one project.** dsh authenticates a browser by host and
+   port, so a session opened for one project would keep answering on that port
+   for the next project. Ports are therefore never reused between projects,
+   including a stopped one's — its service comes back on it.
 
 `Stop` also disables the service, so a `Restart=always` unit stays down instead
 of coming back at the next boot. `Restart` re-enables it.
