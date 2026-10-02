@@ -52,8 +52,8 @@ async function cdp(port, url) {
   }
   ws.close()
   child.kill()
-  await new Promise((r) => setTimeout(r, 500))
-  rmSync(profile, { recursive: true, force: true })
+  await new Promise((r) => setTimeout(r, 1000))
+  try { rmSync(profile, { recursive: true, force: true }) } catch { /* chrome still holds it */ }
   return text
 }
 
