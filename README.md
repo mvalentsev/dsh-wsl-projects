@@ -46,33 +46,42 @@ the chrome differ.
 that service has its own port. Nothing is global, so there is no mode to switch
 and no single "current project" to lose track of.
 
-| State of the picked project | What the panel offers |
-| --- | --- |
-| no service yet | **Start** — creates one, on the first free port |
-| service running | **Stop**, and **Restart** beside it |
-| service stopped | **Start** — brings it back on the port it already had |
+The panel is two sections, in the order the questions get asked.
 
-Starting a project creates or reconfigures *that project's* service and leaves
-every other one alone. That is the whole mechanism behind running several at
-once: pick another project, press Start, and both keep going on their own ports.
-There is deliberately no second command for it — a separate "run also" button
-would imply that starting one project interferes with another, and it does not.
+**Services** — what exists right now, one row per service: a state dot, the
+project, `running` or `stopped`, its port, and the controls that act on *that
+service* — `Open` while it runs, `Stop` or `Start`, and `Restart`. A stopped
+service stays in the list, and the panel reads unit files as well as loaded
+units, because systemd unloads a disabled unit and `list-units` alone would drop
+exactly the services you wanted to see.
+
+**Start a project** — the one thing the panel can add: a filter box, the project
+picker, an optional short name, an optional port, and a single button reading
+**Start a service for this project**. Starting a project creates its service on
+a free port and never touches another, so running several at once is that same
+action repeated on another project.
+
+Two rules keep this readable, both learned from a screenshot where two buttons
+read "Start" with different meanings:
+
+1. **Every control names its scope.** A button inside a service row acts on that
+   row; the button in the lower section acts on the picked project. No label is
+   reused between the two.
+2. **Nothing is offered that cannot work.** While the picked project already
+   runs, its start button is disabled and says why, instead of starting a
+   duplicate or silently re-pointing the running service.
 
 `Stop` also disables the service, so a `Restart=always` unit stays down instead
 of coming back at the next boot. `Restart` re-enables it.
 
-The panel always shows a **Services** list: one row per service with a state
-dot, the project named the way the picker names it, its port, an Open link for a
-running one, and Stop or Start. Stopped services stay in that list — the panel
-reads unit files as well as loaded units, because systemd unloads a disabled
-unit and `list-units` alone would silently drop exactly the services you wanted
-to see.
-
 ## Features
 
-- **Project list** — every directory under `~/projects` (configurable), newest
-  first, annotated with kind (`node` / `python` / `rust` / `go` / `php`) and
-  whether it is a git repository.
+- **Project list** — every directory under `~/projects` (configurable), listed
+  alphabetically by the name you see and annotated with kind (`node` / `python`
+  / `rust` / `go` / `php`), git presence and recency, with a filter box beside
+  the picker so a long list stays navigable. Alphabetical rather than by
+  modification time, because a list that reorders whenever a file is touched is
+  hard to navigate.
 - **Project names** — give a project a short label ("Radio Station") and the
   panel shows that everywhere instead of the folder name. Labels live in
   `~/.dsh/dsh-wsl-projects/aliases.json` inside the distribution, keyed by

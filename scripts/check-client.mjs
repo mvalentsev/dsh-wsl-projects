@@ -388,7 +388,15 @@ const docked = await drivePanel(async () => okResponse(), 'dsh-app://app', 'sett
 const dockedText = docked.rerender().text
 check('settings page renders a primary action', dockedText.includes('Start') || dockedText.includes('Stop'),
   dockedText.slice(0, 240))
-check('settings page lists services', dockedText.includes('Services'), dockedText.slice(0, 300))
+// The screenshot that prompted this restructure had two buttons reading "Start"
+// meaning different things. The wording is part of the design now: one heading
+// per section, and a button that cannot be confused with a service control.
+check('the panel groups services under their own heading', dockedText.includes('Services'), dockedText.slice(0, 200))
+check('the panel names the section that adds a project', dockedText.includes('Start a project'), dockedText.slice(0, 240))
+check('the add-project button says what it does',
+  dockedText.includes('Start a service for this project'), dockedText.slice(0, 320))
+check('a bare Start does not compete with the service rows',
+  !/(^|\| )Start( \||$)/.test(dockedText), dockedText.slice(0, 320))
 check('starting another project needs no separate command', !dockedText.includes('Run also'), dockedText.slice(0, 300))
 check('the old ambiguous restart label is gone', !dockedText.includes('Restart on this project'), dockedText.slice(0, 300))
 check('settings page offers renaming a project', dockedText.includes('Save name'), dockedText.slice(0, 240))
