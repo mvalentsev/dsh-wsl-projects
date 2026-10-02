@@ -125,6 +125,15 @@ const payload = JSON.stringify({
   },
   projects: [{ name: 'radio', path: '/home/me/projects/radio', kind: 'node', git: true, modifiedAt: Math.floor(Date.now() / 1000) - 3600 }],
   aliases: { '/home/me/projects/radio': 'Radio Station' },
+  services: [{
+    unit: 'dsh-web-radio.service',
+    active: 'active',
+    running: true,
+    project: '/home/me/projects/radio',
+    port: 19801,
+    pid: '4242',
+  }],
+  contract: 2,
   configFiles: ['~/.dsh/settings.yaml'],
   defaultPort: 19800,
   apiOrigin: 'http://127.0.0.1:19387',
@@ -295,7 +304,9 @@ check('registration carries an order', typeof healthy.registration?.[1]?.order =
 check('registration exposes a component function', typeof healthy.registration?.[2] === 'function')
 check('panel renders without throwing', !healthy.renderError && !healthy.secondError,
   String(healthy.renderError?.message || healthy.secondError?.message || ''))
-check('relative route is tried first', healthy.fetchCalls[0] === '/wsl-projects/api/state', JSON.stringify(healthy.fetchCalls.slice(0, 3)))
+check('relative route is tried first',
+  String(healthy.fetchCalls[0]).startsWith('/wsl-projects/api/state?contract='),
+  JSON.stringify(healthy.fetchCalls.slice(0, 3)))
 check('the open seat mounts the panel component', healthy.rendered.includes('Panel'), JSON.stringify(healthy.rendered))
 
 // --- pure derivations ------------------------------------------------------
@@ -311,6 +322,25 @@ check('a project is named by its alias', views[0]?.label === 'Radio Station', JS
 check('the alias keeps the folder name visible', views[0]?.name === 'radio')
 check('a project carries its kind and git flag', views[0]?.meta.includes('node') && views[0].meta.includes('git'),
   JSON.stringify(views[0]?.meta))
+
+// Ordering and filtering, so a long list stays navigable.
+const unsorted = [
+  { path: '/p/app-10', name: 'app-10', kind: 'node', git: false, modifiedAt: 100 },
+  { path: '/p/LLM tools', name: 'LLM tools', kind: 'dir', git: false, modifiedAt: 300 },
+  { path: '/p/app-2', name: 'app-2', kind: 'dir', git: false, modifiedAt: 200 },
+]
+const ordered = T.projectViews(unsorted, {})
+check('projects are ordered by the name you see',
+  ordered.map((view) => view.label).join(',') === 'app-2,app-10,LLM tools',
+  ordered.map((view) => view.label).join(','))
+check('an alias decides the order too',
+  T.projectViews(unsorted, { '/p/app-10': 'aaa' })[0].path === '/p/app-10')
+check('filtering matches a folder name', T.filterViews(ordered, 'llm').length === 1)
+check('filtering matches an alias',
+  T.filterViews(T.projectViews(unsorted, { '/p/app-2': 'backend' }), 'backend').length === 1)
+check('filtering ignores case', T.filterViews(ordered, 'APP').length === 2)
+check('an empty filter keeps everything', T.filterViews(ordered, '  ').length === 3)
+check('a filter that matches nothing yields nothing', T.filterViews(ordered, 'zzz').length === 0)
 
 // The regression that prompted this: a running service always reports a
 // project, and that report used to outrank the list, so picking a project did
