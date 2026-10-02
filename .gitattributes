@@ -1,0 +1,15 @@
+# Line endings.
+#
+# Git on Windows converts line endings on checkout by default, so every check
+# printed a warning that a file would be rewritten with CRLF. Two of those files
+# are shell scripts that run inside a Linux distribution, and a carriage return
+# there breaks a comparison that looks correct on screen — it already did once, in
+# a tarball listing.
+#
+# The repository stores LF, everywhere, for everyone.
+
+* text=auto eol=lf
+
+# Files whose bytes must not be touched at all.
+*.png binary
+*.tgz binary
