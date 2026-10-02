@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- The package names its repository, its home page and its issue tracker, so the
+  npm page links to the source.
+
 ## 0.2.0
 
 First release.
