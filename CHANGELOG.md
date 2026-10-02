@@ -45,7 +45,10 @@ Windows dsh app.
 ### Known limits
 
 - The panel's appearance has been verified only through the served boot graph
-  and the client harness, not visually in a running Desktop window.
+  and the client harness, not visually in a running Desktop window. On the
+  Desktop build the client half is composed at startup, so a restart of the app
+  is what delivers it; the host half is live as soon as the profile patch layer
+  is reloaded.
 - `systemctl --user` requires systemd in the distribution and a live user bus;
   distributions without it take the spawn fallback, which cannot survive a
   distribution restart.

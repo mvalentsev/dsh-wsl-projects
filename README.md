@@ -58,9 +58,9 @@ For the Windows Desktop app use `--profile desktop`; for a plain `dsh web`
 profile use `--profile web`. Then **restart that profile** — bundle membership
 is a startup boundary. Open a new session and the panel appears bottom-right.
 
-A running profile does hot-reload its `cordis.patch.yml`, so there is a way to
-activate the plugin without restarting the app: add the row yourself and Cordis
-applies it on the next reload.
+A running profile does hot-reload its `cordis.patch.yml`, so inserting the row
+yourself activates the **host half** immediately — verified against a live
+Desktop app, whose routes answered with real WSL data right after the edit:
 
 ```yaml
 # ~/.dsh/profiles/desktop/cordis.patch.yml
@@ -69,13 +69,13 @@ applies it on the next reload.
       name: "dsh-wsl-projects"
 ```
 
-The host half then answers immediately (verified against a live Desktop app).
-The client half is composed into `window.__DSH_BOOT__` when the page loads, so
-**reload the window** to get the panel. A full restart is the guaranteed path
-and is what a fresh `dsh plugin add` needs anyway; the patch row only shortens
-the loop. Keep the row or remove it — the bundle already in
-`dsh.profile.bundles` mounts the plugin either way, and a duplicate row id
-would be rejected.
+That shortcut does **not** deliver the panel. A Desktop window does not serve
+client bundles over the `/plugins` HTTP route at all — the route answers 404 for
+the shipped plugins too — so the client half travels through the shell's own
+bundle carrier, which is composed at startup. **Restart the app** to get the
+panel; the patch row above is only useful for exercising the host half during
+development, and it is safe to remove once the bundle is in
+`dsh.profile.bundles`.
 
 Three sources work, and none of them needs a build step or a `prepare` script:
 the client bundle is committed to `lib/`, so pnpm never has to allowlist a
