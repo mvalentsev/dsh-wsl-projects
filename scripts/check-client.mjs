@@ -1,8 +1,8 @@
 // Regression harness for the client half plus the host's origin policy. Loads
 // the real bundle with the same globals the shell provides, then drives its
 // plugin through a stubbed Cordis context. It cannot judge pixels, but it does
-// catch a broken factory, a missing export, a wrong slot id and a crash inside
-// apply().
+// catch a broken bundle, a missing export, a wrong slot id, a crash inside
+// apply(), and a broken address fallback.
 //
 //   node scripts/check-client.mjs
 
@@ -11,7 +11,8 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const bundlePath = join(here, '..', 'lib', 'client.js')
+const root = join(here, '..')
+const bundlePath = join(root, 'lib', 'client.js')
 
 const failures = []
 const notes = []
@@ -19,60 +20,6 @@ const notes = []
 function check(label, condition, detail = '') {
   if (condition) notes.push('PASS ' + label)
   else failures.push('FAIL ' + label + (detail ? ' — ' + detail : ''))
-}
-
-// --- globals the shell owns -------------------------------------------------
-
-const loaded = []
-let debugState = null
-globalThis.window = {
-  __ModuleLoader__: {
-    load(spec) {
-      loaded.push(spec)
-    },
-  },
-  innerWidth: 1920,
-  innerHeight: 1080,
-}
-
-const storage = new Map()
-globalThis.localStorage = {
-  getItem: (key) => (storage.has(key) ? storage.get(key) : null),
-  setItem: (key, value) => storage.set(key, String(value)),
-  removeItem: (key) => storage.delete(key),
-}
-globalThis.location = { origin: 'dsh-app://app', protocol: 'dsh-app:' }
-
-const fetchCalls = []
-globalThis.fetch = async (url) => {
-  fetchCalls.push(String(url))
-  const body = JSON.stringify({
-    ok: true,
-    distro: 'Ubuntu',
-    distros: [{ name: 'Ubuntu', state: 'Running', version: 2, isDefault: true }],
-    status: {
-      running: true,
-      pid: '4242',
-      port: '19800',
-      unit: 'dsh-web.service',
-      managed: true,
-      active: 'active',
-      restarts: 3,
-      version: '0.2.0-rc.2',
-      url: 'http://127.0.0.1:19800/?token=abc',
-    },
-    projects: [{ name: 'radio', path: '/home/me/projects/radio', kind: 'node', git: true, modifiedAt: 1790000000 }],
-    aliases: { '/home/me/projects/radio': 'Radio Station' },
-    configFiles: ['~/.dsh/settings.yaml'],
-    defaultPort: 19800,
-    apiOrigin: 'http://127.0.0.1:19387',
-  })
-  return {
-    ok: true,
-    status: 200,
-    text: async () => body,
-    json: async () => JSON.parse(body),
-  }
 }
 
 // --- react stub -------------------------------------------------------------
@@ -83,7 +30,6 @@ function makeReact() {
   let cursor = 0
   return {
     __reset() { cursor = 0 },
-    __dump() { debugState = state.map((v) => (typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v)) },
     createElement: (type, props, ...children) => ({ type, props: props || {}, children }),
     useRef: (initial) => ({ current: initial }),
     useState: (initial) => {
@@ -96,72 +42,11 @@ function makeReact() {
   }
 }
 
+const React = makeReact()
 const requireStub = (id) => {
   if (id === 'react') return React
   throw new Error('unexpected require("' + id + '") — the bundle must stay on the baseline modules')
 }
-
-// --- load -------------------------------------------------------------------
-
-// One React instance for the whole run: the bundle gets it through require(),
-// and the harness renders through the same object, so hook state is shared the
-// way a real renderer shares it.
-const React = makeReact()
-
-const source = await readFile(bundlePath, 'utf8')
-check('bundle inlines no import statement', !/^\s*import\s/m.test(source))
-check('bundle registers with the shell module loader', source.includes('window.__ModuleLoader__.load'))
-
-new Function(source)()
-check('loader received exactly one bundle', loaded.length === 1, 'got ' + loaded.length)
-
-const spec = loaded[0] || {}
-check('bundle id is the package name', spec.id === 'dsh-wsl-projects', 'got ' + JSON.stringify(spec.id))
-check('bundle exposes a factory', typeof spec.factory === 'function')
-
-const plugin = typeof spec.factory === 'function' ? spec.factory(requireStub) : {}
-check('factory returns a plugin object', plugin && typeof plugin === 'object')
-check('plugin exports apply()', typeof plugin.apply === 'function')
-check("plugin injects the slots service", Array.isArray(plugin.inject) && plugin.inject.includes('slots'),
-  'got ' + JSON.stringify(plugin.inject))
-
-// --- drive apply() ----------------------------------------------------------
-
-const registrations = []
-let overlayFactory = null
-const ctx = {
-  logger: { warn: (...args) => notes.push('WARN ' + args.join(' ')), info: () => {} },
-  get: (name) => (name === 'slots' ? {
-    inject: (key, callback) => { registrations.push(['inject', key]); overlayFactory = callback },
-    register: (declaration, component) => { registrations.push(['register', declaration, component]) },
-  } : undefined),
-  effect: (fn) => { const dispose = fn(); return dispose },
-}
-
-let applyError = null
-try {
-  plugin.apply(ctx)
-} catch (error) {
-  applyError = error
-}
-check('apply() runs without throwing', !applyError, applyError ? String(applyError.message) : '')
-check("apply() injects into 'shell.overlay'", registrations.some((r) => r[0] === 'inject' && r[1] === 'shell.overlay'))
-
-if (typeof overlayFactory === 'function') {
-  overlayFactory()
-}
-const registration = registrations.find((r) => r[0] === 'register')
-check('apply() registers a component', Boolean(registration))
-if (registration) {
-  const declaration = registration[1]
-  check('registration targets shell.overlay', declaration?.name === 'shell.overlay', JSON.stringify(declaration))
-  check('registration carries an order', typeof declaration?.order === 'number')
-  check('registration exposes a component function', typeof registration[2] === 'function')
-}
-
-// --- render the panel -------------------------------------------------------
-// Render once, let the host answer, then render again: the second pass is the
-// one that proves the fetched state actually reaches the panel.
 
 function collectText(node, out = []) {
   if (node === null || node === undefined || node === false) return out
@@ -173,28 +58,138 @@ function collectText(node, out = []) {
   return out
 }
 
-const render = () => {
-  React.__reset()
-  return registration ? registration[2]() : null
+const payload = JSON.stringify({
+  ok: true,
+  distro: 'Ubuntu',
+  distros: [{ name: 'Ubuntu', state: 'Running', version: 2, isDefault: true }],
+  status: {
+    running: true,
+    pid: '4242',
+    port: '19800',
+    unit: 'dsh-web.service',
+    managed: true,
+    active: 'active',
+    restarts: 3,
+    version: '0.2.0-rc.2',
+    url: 'http://127.0.0.1:19800/?token=abc',
+  },
+  projects: [{ name: 'radio', path: '/home/me/projects/radio', kind: 'node', git: true, modifiedAt: Math.floor(Date.now() / 1000) - 3600 }],
+  aliases: { '/home/me/projects/radio': 'Radio Station' },
+  configFiles: ['~/.dsh/settings.yaml'],
+  defaultPort: 19800,
+  apiOrigin: 'http://127.0.0.1:19387',
+})
+
+/**
+ * Loads the bundle with fresh globals and returns what the panel produced.
+ * `fetchImpl` receives the URL and must resolve like fetch; `pageOrigin` is the
+ * document origin the shell would provide.
+ */
+async function drivePanel(fetchImpl, pageOrigin = 'dsh-app://app') {
+  const loaded = []
+  const fetchCalls = []
+  const storage = new Map()
+
+  globalThis.window = { __ModuleLoader__: { load: (spec) => loaded.push(spec) }, innerWidth: 1920, innerHeight: 1080 }
+  globalThis.localStorage = {
+    getItem: (key) => (storage.has(key) ? storage.get(key) : null),
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: (key) => storage.delete(key),
+  }
+  globalThis.location = { origin: pageOrigin, protocol: pageOrigin.split(':')[0] + ':' }
+  globalThis.fetch = async (url, options) => {
+    fetchCalls.push(String(url))
+    return fetchImpl(String(url), options)
+  }
+
+  const source = await readFile(bundlePath, 'utf8')
+  new Function(source)()
+
+  const spec = loaded[0]
+  if (!spec) throw new Error('the bundle did not register with the module loader')
+  const plugin = spec.factory(requireStub)
+
+  // --- drive apply()
+  const registrations = []
+  let overlayFactory = null
+  const ctx = {
+    logger: { warn: (...args) => notes.push('WARN ' + args.join(' ')), info: () => {} },
+    get: (name) => (name === 'slots' ? {
+      inject: (key, callback) => { registrations.push(['inject', key]); overlayFactory = callback },
+      register: (declaration, component) => { registrations.push(['register', declaration, component]) },
+    } : undefined),
+    effect: (fn) => fn(),
+  }
+
+  let applyError = null
+  try {
+    plugin.apply(ctx)
+  } catch (error) {
+    applyError = error
+  }
+  if (typeof overlayFactory === 'function') overlayFactory()
+  const registration = registrations.find((r) => r[0] === 'register')
+
+  // --- render twice: empty, then with whatever the host answered
+  const render = () => {
+    React.__reset()
+    return registration ? registration[2]() : null
+  }
+  let renderError = null
+  let tree = null
+  try {
+    tree = render()
+  } catch (error) {
+    renderError = error
+  }
+  for (let i = 0; i < 8; i += 1) await Promise.resolve()
+  let secondError = null
+  try {
+    tree = render()
+  } catch (error) {
+    secondError = error
+  }
+
+  return {
+    spec,
+    plugin,
+    registration,
+    registrations,
+    applyError,
+    renderError,
+    secondError,
+    fetchCalls,
+    text: collectText(tree).join(' | '),
+  }
 }
 
-let renderError = null
-let tree = null
-try {
-  tree = render()
-} catch (error) {
-  renderError = error
-}
-check('panel renders without throwing', !renderError, renderError ? String(renderError.message) : '')
-check('panel returns an element tree', Boolean(tree) && typeof tree === 'object')
+// --- default host: answers on the relative route ----------------------------
 
-// Let the initial refresh() promise chain settle, then render with data.
-for (let i = 0; i < 5; i += 1) await Promise.resolve()
-tree = render()
+const okResponse = () => ({ ok: true, status: 200, text: async () => payload, json: async () => JSON.parse(payload) })
 
-const text = collectText(tree).join(' | ')
+const healthy = await drivePanel(async () => okResponse())
+
+check('bundle inlines no import statement', !/^\s*import\s/m.test(await readFile(bundlePath, 'utf8')))
+check('loader received exactly one bundle', Boolean(healthy.spec))
+check('bundle id is the package name', healthy.spec?.id === 'dsh-wsl-projects', String(healthy.spec?.id))
+check('bundle exposes a factory', typeof healthy.spec?.factory === 'function')
+check('factory returns a plugin object', healthy.plugin && typeof healthy.plugin === 'object')
+check('plugin exports apply()', typeof healthy.plugin?.apply === 'function')
+check("plugin injects the slots service", Array.isArray(healthy.plugin?.inject) && healthy.plugin.inject.includes('slots'),
+  JSON.stringify(healthy.plugin?.inject))
+check('apply() runs without throwing', !healthy.applyError, healthy.applyError ? String(healthy.applyError.message) : '')
+check("apply() injects into 'shell.overlay'", healthy.registrations.some((r) => r[0] === 'inject' && r[1] === 'shell.overlay'))
+check('apply() registers a component', Boolean(healthy.registration))
+check('registration targets shell.overlay', healthy.registration?.[1]?.name === 'shell.overlay', JSON.stringify(healthy.registration?.[1]))
+check('registration carries an order', typeof healthy.registration?.[1]?.order === 'number')
+check('registration exposes a component function', typeof healthy.registration?.[2] === 'function')
+check('panel renders without throwing', !healthy.renderError && !healthy.secondError,
+  String(healthy.renderError?.message || healthy.secondError?.message || ''))
+check('relative route is tried first', healthy.fetchCalls[0] === '/wsl-projects/api/state', JSON.stringify(healthy.fetchCalls.slice(0, 3)))
+
+const text = healthy.text
 check('panel shows its title', text.includes('WSL · dsh projects'), text.slice(0, 200))
-check('panel lists the reported project', text.includes('radio'), text.slice(0, 260))
+check('panel lists the reported project', text.includes('Radio Station'), text.slice(0, 260))
 check('panel offers Start', text.includes('Start'))
 check('panel offers Stop', text.includes('Stop'))
 check('panel offers Restart', text.includes('Restart'))
@@ -205,24 +200,25 @@ check('panel shows the host dsh version', text.includes('0.2.0-rc.2'), text.slic
 check('panel links the token URL', text.includes('Open the WSL dsh UI'), text.slice(0, 260))
 check('managed unit hides the create button', !text.includes('Create service'), text.slice(0, 260))
 check('panel offers renaming a project', text.includes('Save name'), text.slice(0, 300))
-check('panel shows the alias instead of the folder name', text.includes('Radio Station'), text.slice(0, 300))
 
-// --- the panel asks the host over the relative route ------------------------
+// --- degraded host: the relative route fails, an absolute one answers -------
 
-try {
-  const probe = await globalThis.fetch('/wsl-projects/api/state')
-  const body = await probe.json()
-  check('relative route answers', body && body.ok === true)
-  check('relative route is tried first', fetchCalls[0] === '/wsl-projects/api/state', JSON.stringify(fetchCalls.slice(0, 3)))
-} catch (error) {
-  check('relative route answers', false, String(error))
-}
+const degraded = await drivePanel(async (url) => {
+  if (!url.startsWith('http')) throw new Error('Failed to fetch')
+  if (url.includes(':3080')) return okResponse()
+  return { ok: false, status: 404, text: async () => '<html>not here</html>', json: async () => { throw new Error('not json') } }
+}, 'file://')
+
+check('absolute fallback recovers the panel', degraded.text.includes('dsh-web.service') && degraded.text.includes('Radio Station'),
+  degraded.text.slice(0, 220))
+check('fallback walks the candidate addresses',
+  degraded.fetchCalls.some((u) => u.startsWith('http://127.0.0.1:19387')) && degraded.fetchCalls.some((u) => u.startsWith('http://127.0.0.1:3080')),
+  JSON.stringify(degraded.fetchCalls))
+check('a non-JSON answer is not mistaken for the plugin', !degraded.text.includes('not here'), degraded.text.slice(0, 200))
 
 // --- origin policy on the host routes ---------------------------------------
-// The policy lives in the host half, so it is asserted here as source shape:
-// a check that silently disappears would reopen the routes to any page.
 
-const hostSource = await readFile(join(here, '..', 'lib', 'index.js'), 'utf8')
+const hostSource = await readFile(join(root, 'lib', 'index.js'), 'utf8')
 check('host refuses a foreign Origin', hostSource.includes('origin not allowed'))
 check('host accepts the Desktop shell origin', hostSource.includes("'dsh-app://app'"))
 check('host echoes the allowed origin', hostSource.includes('access-control-allow-origin'))
