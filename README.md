@@ -4,9 +4,9 @@ Run DeepSeek Harness (dsh) inside WSL2 and drive it from the Windows dsh app:
 pick the project folder, start, stop and restart the WSL instance, choose its
 port, and edit its config files — without opening a WSL terminal.
 
-The panel is a **page in Settings → WSL projects**, next to the host's own
-sections. A draggable overlay is still available if you would rather keep it in
-view; see [Where the panel lives](#where-the-panel-lives).
+The panel opens from a **button in the sidebar foot**: one click, in place, no
+window to move around. Two other homes remain selectable; see
+[Where the panel lives](#where-the-panel-lives).
 
 > Verified against dsh `0.2.0-rc.2` (engine line `0.2.0`). Not affiliated with
 > DeepSeek.
@@ -23,22 +23,22 @@ This plugin removes that hop. It is a control panel for exactly that instance.
 
 ## Where the panel lives
 
-By default the panel registers into the host's **`settings.section`** slot, so
-it reads as an ordinary settings page: its own entry in the settings navigation,
-normal document flow, themed by the host, no window chrome. That is the right
-home for a control surface — it has room, it does not cover the conversation,
-and it matches how the host's own management pages look.
+By default the plugin takes a seat in **`sidebar.footer.action`**: a button in
+the sidebar foot that opens the panel next to itself, anchored above the button.
+A cell of that slot is a whole component — the host's own occupant of it works
+the same way — so the trigger and the popover it opens are both owned here, and
+nothing floats over the conversation until you ask for it.
 
-If you would rather have it always in view, the plugin can register the
-draggable overlay instead. There is no configuration key for this yet; the
-switch is a global the shell can set before the bundle materialises:
+Two other homes are selectable through a global the shell can set before the
+bundle materialises:
 
 ```js
-window.__DSH_WSL_PROJECTS_SURFACE__ = 'floating'
+window.__DSH_WSL_PROJECTS_SURFACE__ = 'settings'  // a page under Settings
+window.__DSH_WSL_PROJECTS_SURFACE__ = 'floating'  // a draggable overlay
 ```
 
-Both surfaces render the same component and call the same routes; only the slot
-and the chrome differ.
+All three render the same component and call the same routes; only the slot and
+the chrome differ.
 
 ## Features
 
