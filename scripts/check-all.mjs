@@ -82,6 +82,13 @@ function availability(needs) {
     return { ok: true }
   }
   if (needs === 'browser') {
+    // The browser checks speak Chrome's debugging protocol over a WebSocket,
+    // and that became a Node global only in Node 22. A Node without it cannot
+    // ask a browser anything, so the browser checks report that and are
+    // skipped here instead of crashing inside the protocol.
+    if (typeof WebSocket === 'undefined') {
+      return { ok: false, why: 'this Node has no WebSocket global to speak the debugging protocol on (Node 22+)' }
+    }
     const candidates = [
       process.env.UI_BROWSER,
       process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe'),

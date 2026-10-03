@@ -35,6 +35,13 @@ if (!url || !/^https?:\/\//.test(url)) {
   process.exit(1)
 }
 
+// The debugging protocol is spoken over a WebSocket, which became a Node
+// global in Node 22; an older Node cannot drive the browser at all.
+if (typeof WebSocket === 'undefined') {
+  console.error('this Node has no WebSocket global to speak the debugging protocol on (Node 22+)')
+  process.exit(1)
+}
+
 /** A Chromium-based browser, looked for rather than assumed. */
 function findBrowser() {
   const candidates = [
