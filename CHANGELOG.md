@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- The readme images follow the viewer: the banner and the architecture diagram
+  gained a light and a dark variant, and every image gained a narrow variant
+  for small screens.
+- The panel illustration is gone. The readme now shows screenshots of the real
+  panel, and `scripts/capture-panel.mjs` takes them again from a running app.
+- `check-assets.mjs` renders the readme's images in a browser and fails when a
+  dark variant is not darker, or a narrow SVG does not follow the scheme.
+
 ## 0.2.2
 
 - The package ships the images the readme references, so the npm page shows the

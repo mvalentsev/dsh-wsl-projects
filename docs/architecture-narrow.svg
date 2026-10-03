@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="640" viewBox="0 0 560 640" role="img" aria-labelledby="title">
+<title id="title">How dsh-wsl-projects lays out services: the Windows app drives one systemd user service, port and dsh home per project inside WSL2</title>
+<style>
+.bg{fill:#f6f8fa;stroke:#d0d7de}
+.card{fill:#ffffff;stroke:#d0d7de}
+.dash{stroke:#d0d7de}
+.t{fill:#1f2328}
+.m{fill:#57606e}
+.b{stroke:#0969da}
+.g{fill:#1a7f37}
+.chip{fill:#f6f8fa}
+.pb{stroke:#0969da}
+.pt{fill:#0969da}
+.vb{stroke:#8250df}
+.vt{fill:#8250df}
+.af{fill:#0969da}
+@media (prefers-color-scheme: dark){
+  .bg{fill:#0d1117;stroke:#262c36}
+  .card{fill:#161b22;stroke:#30363d}
+  .dash{stroke:#30363d}
+  .t{fill:#e6edf3}
+  .m{fill:#8b949e}
+  .b{stroke:#58a6ff}
+  .g{fill:#3fb950}
+  .chip{fill:#0d1117}
+  .pb{stroke:#1f6feb}
+  .pt{fill:#58a6ff}
+  .vb{stroke:#a371f7}
+  .vt{fill:#d2a8ff}
+  .af{fill:#58a6ff}
+}
+</style>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="af" d="M 0 0 L 10 5 L 0 10 z"/>
+  </marker>
+</defs>
+
+<rect class="bg" x="1" y="1" width="558" height="638" rx="16" stroke-width="1.5"/>
+
+<!-- Windows side -->
+<rect class="card" x="120" y="30" width="320" height="170" rx="14"/>
+<text class="m" x="140" y="56" font-family="Segoe UI, Inter, sans-serif" font-size="12" font-weight="700" letter-spacing="1.1">WINDOWS</text>
+<rect class="b" x="247" y="74" width="66" height="46" rx="8" fill="none" stroke-width="2"/>
+<line class="b" x1="280" y1="74" x2="280" y2="120" stroke-width="2"/>
+<line class="b" x1="247" y1="97" x2="313" y2="97" stroke-width="2"/>
+<text class="t" x="280" y="146" text-anchor="middle" font-family="Segoe UI, Inter, sans-serif" font-size="15" font-weight="600">DeepSeek Harness app</text>
+<text class="m" x="280" y="166" text-anchor="middle" font-family="Segoe UI, Inter, sans-serif" font-size="12">the panel</text>
+
+<!-- the panel drives the services below -->
+<path class="b" d="M 280 200 L 280 236" fill="none" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+<!-- WSL2 side -->
+<rect class="dash" x="20" y="240" width="520" height="344" rx="14" fill="none" stroke-width="1.5" stroke-dasharray="6 5"/>
+<text class="m" x="36" y="264" font-family="Segoe UI, Inter, sans-serif" font-size="12" font-weight="700" letter-spacing="1.1">WSL2 · UBUNTU</text>
+
+<!-- service card 1 -->
+<rect class="card" x="30" y="290" width="500" height="84" rx="10"/>
+<text class="t" x="54" y="324" font-family="Segoe UI, Consolas, monospace" font-size="14">dsh-web-api-gateway</text>
+<circle class="g" cx="500" cy="318" r="4"/>
+<rect class="chip pb" x="54" y="336" width="62" height="26" rx="6"/>
+<text class="pt" x="85" y="354" text-anchor="middle" font-family="Segoe UI, Consolas, monospace" font-size="12">:19800</text>
+<rect class="chip vb" x="126" y="336" width="94" height="26" rx="6"/>
+<text class="vt" x="173" y="354" text-anchor="middle" font-family="Segoe UI, Inter, sans-serif" font-size="12">own dsh home</text>
+<text class="m" x="236" y="354" font-family="Segoe UI, Inter, sans-serif" font-size="11">systemctl --user</text>
+
+<!-- service card 2 -->
+<rect class="card" x="30" y="390" width="500" height="84" rx="10"/>
+<text class="t" x="54" y="424" font-family="Segoe UI, Consolas, monospace" font-size="14">dsh-web-web-client</text>
+<circle class="g" cx="500" cy="418" r="4"/>
+<rect class="chip pb" x="54" y="436" width="62" height="26" rx="6"/>
+<text class="pt" x="85" y="454" text-anchor="middle" font-family="Segoe UI, Consolas, monospace" font-size="12">:19802</text>
+<rect class="chip vb" x="126" y="436" width="94" height="26" rx="6"/>
+<text class="vt" x="173" y="454" text-anchor="middle" font-family="Segoe UI, Inter, sans-serif" font-size="12">own dsh home</text>
+<text class="m" x="236" y="454" font-family="Segoe UI, Inter, sans-serif" font-size="11">systemctl --user</text>
+
+<!-- service card 3 -->
+<rect class="card" x="30" y="490" width="500" height="84" rx="10"/>
+<text class="t" x="54" y="524" font-family="Segoe UI, Consolas, monospace" font-size="14">dsh-web-docs-site</text>
+<circle class="g" cx="500" cy="518" r="4"/>
+<rect class="chip pb" x="54" y="536" width="62" height="26" rx="6"/>
+<text class="pt" x="85" y="554" text-anchor="middle" font-family="Segoe UI, Consolas, monospace" font-size="12">:19801</text>
+<rect class="chip vb" x="126" y="536" width="94" height="26" rx="6"/>
+<text class="vt" x="173" y="554" text-anchor="middle" font-family="Segoe UI, Inter, sans-serif" font-size="12">own dsh home</text>
+<text class="m" x="236" y="554" font-family="Segoe UI, Inter, sans-serif" font-size="11">systemctl --user</text>
+
+<text class="m" x="280" y="618" text-anchor="middle" font-family="Segoe UI, Inter, sans-serif" font-size="13">one service · one port · one dsh home — per project</text>
+</svg>

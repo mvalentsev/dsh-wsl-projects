@@ -23,6 +23,7 @@ The checks, and what each one needs:
 node scripts/check-manifest.mjs      # manifest, exports, package contents   (Node)
 node scripts/check-client.mjs        # the client half                       (Node)
 node scripts/check-theme-tokens.mjs  # the theme tokens                      (Node)
+node scripts/check-assets.mjs        # the readme images render, per theme   (browser)
 node scripts/check-bash.mjs          # the generated shell scripts           (Node, bash when reachable)
 node scripts/check-pack.mjs          # the tarball installs and starts       (Node, a profile)
 node scripts/check-projects.mjs      # two projects, one port each           (distribution)
@@ -40,6 +41,12 @@ makes from a copy of yours, starts a server on it, and asks that server for the
 plugin's route. A file left out of `files`, an export that does not resolve, or
 a manifest that installs but does not load are all invisible from the checkout
 and visible here. Without a profile it checks the tarball contents and says so.
+
+`check-assets.mjs` keeps the readme's images honest: it reads the `<picture>`
+blocks out of the readme, loads every file they name in a real browser, and
+measures what each renders as. The dark variant has to be darker than the
+light one, and a narrow SVG has to follow the colour scheme from inside its
+own `<style>`, so an image that only works in one theme fails here.
 
 `check-readme.mjs` is the proof of the readme. It holds one entry for each
 claim, finds the evidence, and prints it. A claim with no evidence fails. Run it
@@ -60,7 +67,8 @@ You can point the checks at your machine:
 - `SMOKE_DISTRO` — the distribution to drive (default `Ubuntu`).
 - `SMOKE_PROJECT`, `SMOKE_PROJECT_A`, `SMOKE_PROJECT_B` — the projects to use.
 - `DSH_ASAR` — where the app's asar lives, for checks that read the app.
-- `UI_BROWSER` — the browser for `check-ui.mjs` (Chromium-based).
+- `UI_BROWSER` — the browser for `check-ui.mjs` and `capture-panel.mjs`
+  (Chromium-based).
 
 ## CI
 
@@ -71,8 +79,26 @@ the very thing those checks exist to observe.
 
 ## Assets
 
-The images in `docs/` are hand-written SVG. The social preview PNG is rendered
-from the same design with GDI+:
+The images in `docs/` come in three shapes, and the readme picks between them
+with `<picture>`: a light variant, a dark variant, and a narrow one for small
+screens (the narrow SVG follows the viewer's colour scheme from inside, with a
+`prefers-color-scheme` media query in its own `<style>`).
+
+The banner and the architecture diagram are hand-written SVG — change the
+colors of `*-light.svg` and `*-dark.svg` together, and keep
+`*-narrow.svg`'s two palettes beside them.
+
+The panel images are screenshots of the real panel, not drawings of it:
+`capture-panel.mjs` opens the app, opens the panel from its sidebar seat, and
+captures what is there. Point it at a dsh web app URL — a throwaway server
+prints one, and its token is part of the URL:
+
+```sh
+dsh --profile web --no-open --port 19444
+node scripts/capture-panel.mjs 'http://127.0.0.1:19444/?token=…'
+```
+
+The social preview PNG is rendered from the banner design with GDI+:
 
 ```powershell
 pwsh -NoProfile -File scripts/render-social-preview.ps1

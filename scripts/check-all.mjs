@@ -23,6 +23,7 @@ const CHECKS = [
   { file: 'check-manifest.mjs', needs: ['node'], says: 'manifest, exports and package contents' },
   { file: 'check-client.mjs', needs: ['node'], says: 'the client half: factory, slots, decisions' },
   { file: 'check-theme-tokens.mjs', needs: ['node'], says: 'theme tokens exist and no colour literal' },
+  { file: 'check-assets.mjs', needs: ['browser'], says: 'the readme images render and follow the theme' },
   { file: 'check-bash.mjs', needs: ['node'], says: 'every generated shell script parses (bash when reachable)' },
   { file: 'check-pack.mjs', needs: ['node'], says: 'the packed tarball installs and starts' },
   { file: 'check-projects.mjs', needs: ['distro'], says: 'the project model, two projects at once' },

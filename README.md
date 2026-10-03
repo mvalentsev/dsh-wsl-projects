@@ -1,6 +1,8 @@
 <p align="center">
   <picture>
-    <img src="docs/banner.svg" alt="dsh-wsl-projects — one DeepSeek Harness web server per project, inside WSL2" width="720">
+    <source media="(max-width: 600px)" srcset="docs/banner-narrow.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/banner-dark.svg">
+    <img src="docs/banner-light.svg" alt="dsh-wsl-projects — one DeepSeek Harness web server per project, inside WSL2" width="720">
   </picture>
 </p>
 
@@ -14,7 +16,9 @@
 
 <p align="center">
   <picture>
-    <img src="docs/panel.svg" alt="The WSL projects panel: services with their state, port and controls, and a form that starts a project" width="620">
+    <source media="(max-width: 600px)" srcset="docs/panel-narrow.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/panel-dark.png">
+    <img src="docs/panel-light.png" alt="The WSL projects panel, opened from the sidebar foot: services with their state, port and controls, and the form that starts a project" width="480">
   </picture>
 </p>
 
@@ -47,7 +51,9 @@ all.
 
 <p align="center">
   <picture>
-    <img src="docs/architecture.svg" alt="The Windows app drives one systemd user service, port and dsh home per project inside WSL2" width="620">
+    <source media="(max-width: 600px)" srcset="docs/architecture-narrow.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
+    <img src="docs/architecture-light.svg" alt="The Windows app drives one systemd user service, port and dsh home per project inside WSL2" width="620">
   </picture>
 </p>
 
@@ -195,6 +201,11 @@ journalctl --user -u dsh-web-<folder>-<tag>.service -n 40
 npm run check            # every check, in one sequence
 npm run check:offline    # only the checks that need no distribution
 ```
+
+The panel images above are screenshots of the real panel:
+`node scripts/capture-panel.mjs <url>` takes them again from a running app.
+The banner and the architecture diagram are drawings, each in a light, a dark
+and a narrow variant, in `docs/`.
 
 CI runs the offline checks on Node 20, 22 and 24. What each check covers, and
 how to run the ones that need a real distribution or a browser, is in

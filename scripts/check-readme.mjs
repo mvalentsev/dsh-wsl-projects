@@ -143,9 +143,31 @@ else fail('package.json declares MIT', 'license: ' + manifest.license)
 for (const path of ['scripts/check-manifest.mjs', 'scripts/check-client.mjs', 'scripts/check-theme-tokens.mjs',
   'scripts/check-bash.mjs', 'scripts/check-projects.mjs', 'scripts/check-urls.mjs', 'scripts/check-legacy.mjs',
   'scripts/check-shared-home.mjs', 'scripts/check-alias.mjs', 'scripts/smoke.mjs', 'scripts/check-ui.mjs',
-  'scripts/check-readme.mjs', 'scripts/check-all.mjs', 'scripts/check-pack.mjs']) {
+  'scripts/check-readme.mjs', 'scripts/check-all.mjs', 'scripts/check-pack.mjs', 'scripts/check-assets.mjs']) {
   file('The readme names a check that exists: ' + path, path)
 }
+
+// ------------------------------------------------------------------ the images
+//
+// The readme shows a real panel, not a drawing of one, and every image is
+// offered per theme and per screen, the way the reference pattern does it.
+
+for (const path of ['docs/panel-dark.png', 'docs/panel-light.png', 'docs/panel-narrow.png',
+  'docs/banner-light.svg', 'docs/banner-dark.svg', 'docs/banner-narrow.svg',
+  'docs/architecture-light.svg', 'docs/architecture-dark.svg', 'docs/architecture-narrow.svg',
+  'scripts/capture-panel.mjs']) {
+  file('The readme names an image that exists: ' + path, path)
+}
+await code('The panel images are screenshots, taken from the real panel',
+  'scripts/capture-panel.mjs', 'Page.captureScreenshot')
+await code('The panel images are captured in the dark',
+  'scripts/capture-panel.mjs', "captureClip('panel-dark.png')")
+await code('Every image offers a dark variant',
+  'README.md', 'srcset="docs/banner-dark.svg"')
+await code('Every image offers a narrow variant for small screens',
+  'README.md', 'media="(max-width: 600px)"')
+await code('The readme says the panel images are screenshots of the real panel',
+  'README.md', 'screenshots of the real panel')
 
 // ----------------------------------------------------------------- the panel
 
