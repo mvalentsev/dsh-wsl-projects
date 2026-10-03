@@ -13,11 +13,11 @@
 // dialogs away the way a user would — clicking the button that acknowledges
 // each one — opens the WSL projects panel from its seat in the sidebar foot,
 // waits until the panel reports the state of the real services, checks that
-// nothing is sitting on top of the panel, and captures the popover the way
-// the readme presents it: a dark shot, a light shot, and a narrow one for
-// small screens. The images land in docs/ (or the given directory) as
-// panel-dark.png, panel-light.png and panel-narrow.png, overwriting what is
-// there.
+// nothing is sitting on top of the panel, hides everything that is not the
+// panel or the seat it opened from, and captures the popover the way the
+// readme presents it: a dark shot, a light shot, and a narrow one for small
+// screens. The images land in docs/ (or the given directory) as panel-dark.png,
+// panel-light.png and panel-narrow.png, overwriting what is there.
 //
 // A Chromium-based browser is looked up the way check-ui.mjs looks for one:
 // UI_BROWSER, the usual install locations, then PATH.
@@ -237,6 +237,30 @@ async function bootAndOpenPanel(scheme) {
 }
 
 /** Captures the popover, with the seat it opened from just below it. */
+/**
+ * Nothing but the panel and the seat it opened from is left to paint. Hiding
+ * rather than removing keeps every measurement taken before it valid, and the
+ * shot then depends on the panel alone: no sliver of the app around the frame,
+ * no icon of a neighbour in the sidebar foot, no backdrop of a surface that
+ * was there at the time.
+ */
+async function isolatePanel() {
+  const hidden = await evaluate(`(() => {
+    const keep = [${DIALOG}, ${TRIGGER}].filter(Boolean)
+    if (keep.length === 0) return 0
+    let hidden = 0
+    for (const el of document.querySelectorAll('body *')) {
+      if (keep.some((node) => node === el || node.contains(el) || el.contains(node))) continue
+      if (el.style.visibility === 'hidden') continue
+      el.style.visibility = 'hidden'
+      hidden += 1
+    }
+    return hidden
+  })()`)
+  console.log('hid ' + hidden + ' elements outside the panel')
+  await sleep(400) // let the styles land before the shutter opens
+}
+
 async function captureClip(name) {
   const rect = await evaluate(`(() => { const d = ${DIALOG}; if (!d) return null; const r = d.getBoundingClientRect();
     const t = ${TRIGGER}; const tr = t ? t.getBoundingClientRect() : null;
@@ -249,6 +273,7 @@ async function captureClip(name) {
     height: Math.min(rect.h + 16, rect.vh - Math.max(0, rect.y - 8)),
     scale: 1,
   }
+  await isolatePanel()
   const shot = await send('Page.captureScreenshot', { format: 'png', clip })
   writeFileSync(join(outDir, name), Buffer.from(shot.data, 'base64'))
   console.log('saved ' + join('docs', name))
