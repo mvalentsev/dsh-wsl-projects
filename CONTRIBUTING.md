@@ -82,6 +82,25 @@ Node 20, 22 and 24, packs the tarball and checks its contents. The checks that
 drive a real distribution or a real browser run by hand: CI would have to fake
 the very thing those checks exist to observe.
 
+## Releases
+
+A release is a version in `package.json`, a section of the same version in
+`CHANGELOG.md`, and a tag `v<version>` on the commit main points at. Pushing
+that tag is the whole procedure: the [release workflow](.github/workflows/release.yml)
+refuses a tag that is not main's tip or that does not name the version in
+`package.json`, then publishes the release with the notes taken from that
+changelog section — a release cannot say something the changelog does not.
+
+```sh
+npm version patch --no-git-tag-version   # the version and its changelog section
+git commit -am 'chore: bump to 0.2.3'
+git push origin main && git push origin v0.2.3
+```
+
+Publishing to npm is separate, and stays with the maintainer: npm asks for a
+one-time code from the authenticator, so CI does not hold a token that could
+write to it.
+
 ## Assets
 
 The images in `docs/` come in three shapes, and the readme picks between them
