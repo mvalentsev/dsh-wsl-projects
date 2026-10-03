@@ -26,6 +26,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 
+// The debugging protocol is spoken over a WebSocket, which became a Node
+// global in Node 22. On an older Node this check cannot run at all, and
+// failing here with the reason beats crashing halfway through the markup.
+if (typeof WebSocket === 'undefined') {
+  console.log('FAIL this Node has no WebSocket global to speak the debugging protocol on (Node 22+)')
+  process.exit(1)
+}
+
 let failures = 0
 const check = (ok, msg) => {
   console.log((ok ? 'PASS ' : 'FAIL ') + msg)

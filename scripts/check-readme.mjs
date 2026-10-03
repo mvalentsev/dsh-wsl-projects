@@ -113,6 +113,8 @@ if ((await read('scripts/check-all.mjs')).includes('skipped')) {
 } else {
   fail('a check that cannot run is reported as skipped', 'check-all.mjs never mentions skipping')
 }
+await code('the browser checks skip on a Node with no WebSocket global',
+  'scripts/check-all.mjs', 'typeof WebSocket')
 
 const workflow = await read('.github/workflows/checks.yml')
 const matrix = workflow.match(/node:\s*\[([^\]]+)\]/)?.[1] || ''

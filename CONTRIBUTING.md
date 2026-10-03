@@ -17,6 +17,11 @@ npm run check:offline    # only the checks that need no distribution
 It prints one line per check, and a check that cannot run on this machine is
 reported as skipped with the reason. Nothing passes silently.
 
+The checks that drive a browser — `check-assets.mjs`, `check-ui.mjs` and
+`capture-panel.mjs` — speak Chrome's debugging protocol over a WebSocket, so
+they need Node 22 or newer. On an older Node `check-all.mjs` runs everything
+else and reports them skipped with that reason.
+
 The checks, and what each one needs:
 
 ```sh

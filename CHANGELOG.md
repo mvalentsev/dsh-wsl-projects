@@ -9,6 +9,9 @@
   panel, and `scripts/capture-panel.mjs` takes them again from a running app.
 - `check-assets.mjs` renders the readme's images in a browser and fails when a
   dark variant is not darker, or a narrow SVG does not follow the scheme.
+- The browser checks speak Chrome's debugging protocol over a WebSocket, which
+  Node 20 does not have: they report that and are skipped there, instead of
+  failing CI on the Node 20 leg of the matrix.
 
 ## 0.2.2
 
